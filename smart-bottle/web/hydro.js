@@ -29,6 +29,9 @@ let busy = false;
 
 const tier = () => (TIERS[app.cfg.tier] ? app.cfg.tier : 'free');
 const T = () => TIERS[tier()];
+// HydroGPT e complet blocat sub Ultra: fără verdict, chat, mementouri sau comentarii.
+const agentOn = () => TIERS[tier()].agent === true;
+let greeted = false;
 
 export function context() {
   const { cfg, state } = app;
@@ -121,7 +124,7 @@ async function think(ctx, d) {
 }
 
 async function ask(question) {
-  if (busy) return;
+  if (busy || !agentOn()) return;
   const lim = T().chatPerDay;
   bubble('user', question);
   chat.push({ role: 'user', text: question });
@@ -170,6 +173,7 @@ function scheduleReminder(minutes, message) {
 
 // Mesaje proactive: cât de des depinde de abonament.
 function nudgeLoop() {
+  if (!agentOn()) return;
   renderVerdict();
   if (Date.now() - lastNudge < T().nudgeMin * 60000) return;
   const { d } = renderVerdict();
@@ -183,6 +187,7 @@ function nudgeLoop() {
 
 export function onEvent(ev) {
   cloud.pushEvents([ev]).then(refreshBoard);
+  if (!agentOn()) return;
   const ctx = context();
   agentSay(reactToEvent(ev, tier(), ctx));
   lastNudge = Date.now();
@@ -197,8 +202,18 @@ function applyTier() {
   $('adBanner').hidden = !T().ads;
   $('btnReport').hidden = !T().report;
   $('agentEngine').textContent = T().llm && cloud.ready ? 'AI în cloud' : 'agent local';
-  renderQuota();
-  renderVerdict(true);
+  const on = agentOn();
+  $('agentCard').classList.toggle('locked', !on);
+  $('agentLock').hidden = on;
+  for (const id of ['agentEngine', 'btnAsk', 'verdict', 'council', 'chatLog', 'chatForm', 'agentFoot']) {
+    if (!on) $(id).hidden = true;
+    else if (id !== 'council') $(id).hidden = false;
+  }
+  if (on) {
+    renderQuota();
+    renderVerdict(true);
+    if (!greeted) { greeted = true; agentSay('Salut! Sunt HydroGPT™. Îți urmăresc sticla și îți spun când să bei. Întreabă-mă orice (despre apă).'); }
+  }
   app.onTierChange();
 }
 
@@ -311,6 +326,7 @@ export async function initHydro(api) {
   $('btnNoAds').addEventListener('click', () => { renderTiers(); $('tiersDialog').showModal(); });
   $('weekLock').addEventListener('click', () => { renderTiers(); $('tiersDialog').showModal(); });
   $('btnReport').addEventListener('click', openReport);
+  $('btnUnlockAgent').addEventListener('click', () => { $('invoice').hidden = true; renderTiers(); $('tiersDialog').showModal(); });
   $('btnAsk').addEventListener('click', () => ask('Când trebuie să beau?'));
   $('chatForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -336,7 +352,6 @@ export async function initHydro(api) {
   $('adText').textContent = ADS[0];
 
   applyTier();
-  agentSay('Salut! Sunt HydroGPT™. Îți urmăresc sticla și îți spun când să bei. Întreabă-mă orice (despre apă).');
 
   setInterval(nudgeLoop, 30000);
   setInterval(refreshBoard, 60000);

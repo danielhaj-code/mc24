@@ -6,26 +6,26 @@
 export const TIERS = {
   free: {
     name: 'Free', price: '0 lei', blurb: 'Apă, dar cu reclame.',
-    nudgeMin: 60, chatPerDay: 3, ads: true, precision: 50, council: false,
-    weekChart: false, llm: false, report: false,
-    perks: ['Afișaj rotunjit la ±50 mL', '3 întrebări pe zi pentru HydroGPT', 'Reclame la apă (de la sponsorul nostru, Apa)', 'Memento o dată pe oră'],
+    nudgeMin: 60, chatPerDay: 0, ads: true, precision: 50, council: false,
+    weekChart: false, llm: false, report: false, agent: false,
+    perks: ['Afișaj rotunjit la ±50 mL', 'Reclame la apă (de la sponsorul nostru, Apa)', 'Memento simplu după câteva ore fără apă', 'Fără HydroGPT'],
   },
   pro: {
     name: 'Pro', price: '9,99 lei / lună', blurb: 'Pentru cei care beau serios.',
-    nudgeMin: 20, chatPerDay: Infinity, ads: false, precision: 10, council: false,
-    weekChart: true, llm: false, report: false,
-    perks: ['Precizie ±10 mL', 'HydroGPT nelimitat, ton de antrenor', 'Graficul pe 7 zile deblocat', 'Fără reclame', 'Memento la 20 min'],
+    nudgeMin: 20, chatPerDay: 0, ads: false, precision: 10, council: false,
+    weekChart: true, llm: false, report: false, agent: false,
+    perks: ['Precizie ±10 mL', 'Graficul pe 7 zile deblocat', 'Fără reclame', 'Fără HydroGPT (vine cu Ultra)'],
   },
   ultra: {
     name: 'Ultra', price: '49,99 lei / lună', blurb: 'Somelier de apă personal.',
     nudgeMin: 10, chatPerDay: Infinity, ads: false, precision: 1, council: true,
-    weekChart: true, llm: true, report: false,
-    perks: ['Precizie la mililitru', 'Consiliul Organelor: vezi cum votează rinichii', 'AI adevărat (Gemini) care îți citește sticla și istoricul', 'Temă aurie', 'Memento la 10 min'],
+    weekChart: true, llm: true, report: false, agent: true,
+    perks: ['HydroGPT: agentul AI care îți spune când să bei', 'Precizie la mililitru', 'Consiliul Organelor: vezi cum votează rinichii', 'AI adevărat (Gemini) care îți citește sticla și istoricul', 'Temă aurie', 'Memento la 10 min'],
   },
   enterprise: {
     name: 'Enterprise', price: 'Contactează vânzările', blurb: 'Hidratare la scară, cu guvernanță.',
     nudgeMin: 5, chatPerDay: Infinity, ads: false, precision: 1, council: true,
-    weekChart: true, llm: true, report: true,
+    weekChart: true, llm: true, report: true, agent: true,
     perks: ['Tot din Ultra', 'Raport KPI de hidratare pentru board', 'Monitorizare în timp real (5 min)', 'Conformitate ISO H₂O:2026*', 'Account manager dedicat (tot HydroGPT)'],
   },
 };

@@ -60,6 +60,11 @@ export function parseMessage(line) {
     if ([raw, pct, stable].some(Number.isNaN)) return null;
     return { type: 'level', raw, pct, stable: stable === 1 };
   }
+  if (p[0] === 'P' && p.length === 3) {
+    const [uptime, ok] = p.slice(1).map(Number);
+    if ([uptime, ok].some(Number.isNaN)) return null;
+    return { type: 'pong', uptime, sourceOk: ok === 1 };
+  }
   if (t === 'A,C') return { type: 'calAck' };
   if (t === 'E,C') return { type: 'calErr' };
   return null;
@@ -124,4 +129,68 @@ export function dailyTotals(events, days, now = Date.now()) {
 // Calibrarea trimisă dispozitivului ca "C,gol,plin".
 export function calibrationCommand(cal) {
   return `C,${Math.round(cal.empty)},${Math.round(cal.full)}\n`;
+}
+
+// Supravegherea legăturii BLE (heartbeat). Logică pură: primește timpul, întoarce ce e de făcut.
+//  - trimite „P” periodic și imediat ce se face liniște;
+//  - liniște prea lungă => conexiunea e blocată => reconectare;
+//  - pong cu sursa_ok = 0 => Bluetooth-ul merge, dar STM32 nu mai trimite (nu reconectăm degeaba).
+export const HEARTBEAT = {
+  pingEvery: 5000,    // ping de rutină
+  quietAfter: 3000,   // citirile vin la 1 s; după 3 s de liniște întrebăm
+  pingGap: 2000,      // nu trimitem ping-uri mai des de atât
+  stallAfter: 10000,  // nimic primit atâta timp => conexiune blocată
+  sourceStale: 12000, // cât timp rămâne valabilă informația „sursa nu trimite”
+};
+
+export class LinkMonitor {
+  constructor(opts = {}, now = 0) {
+    this.o = { ...HEARTBEAT, ...opts };
+    this.reboots = 0;            // contoare pe toată sesiunea, nu se resetează la reconectare
+    this.stalls = 0;
+    this.reset(now);
+  }
+
+  reset(now) {
+    this.lastRx = now;          // orice linie primită
+    this.lastData = now;        // ultima citire L (date de la STM32)
+    this.lastPing = -Infinity;
+    this.pingSentAt = null;
+    this.rtt = null;
+    this.pong = null;           // { at, sourceOk, uptime }
+  }
+
+  onMessage(msg, now) {
+    this.lastRx = now;
+    if (!msg) return;
+    if (msg.type === 'level') this.lastData = now;
+    if (msg.type === 'pong') {
+      if (this.pingSentAt !== null) { this.rtt = now - this.pingSentAt; this.pingSentAt = null; }
+      if (this.pong && msg.uptime < this.pong.uptime) this.reboots++;   // ESP32 a repornit între timp
+      this.pong = { at: now, sourceOk: msg.sourceOk, uptime: msg.uptime };
+    }
+  }
+
+  // Starea legăturii: ok | quiet | stalled | source
+  health(now) {
+    const silence = now - this.lastRx;
+    if (silence >= this.o.stallAfter) return 'stalled';
+    if (silence >= this.o.quietAfter) return 'quiet';
+    if (this.pong && !this.pong.sourceOk && now - this.pong.at < this.o.sourceStale
+        && now - this.lastData >= this.o.quietAfter) return 'source';
+    return 'ok';
+  }
+
+  // Apelat periodic (o dată pe secundă). Întoarce 'ping', 'reconnect' sau null.
+  tick(now) {
+    const h = this.health(now);
+    if (h === 'stalled') { this.stalls++; return 'reconnect'; }
+    const sincePing = now - this.lastPing;
+    if ((h === 'quiet' && sincePing >= this.o.pingGap) || sincePing >= this.o.pingEvery) {
+      this.lastPing = now;
+      this.pingSentAt = now;
+      return 'ping';
+    }
+    return null;
+  }
 }

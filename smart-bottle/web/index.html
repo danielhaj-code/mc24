@@ -120,6 +120,16 @@
       <span id="adText" class="ad-text"></span>
       <button id="btnNoAds" class="ghost small">Elimină reclamele</button>
     </div>
+    <div id="linkLost" class="banner alert" hidden>
+      <svg class="i" aria-hidden="true"><use href="#i-bluetooth"/></svg>
+      <span>Legătura cu sticla s-a pierdut și nu s-a refăcut singură. Verifică dacă ESP32 e alimentat și aproape, apoi reconectează.</span>
+      <button id="btnRepair" class="primary small">Reconectează</button>
+      <button id="btnLostDismiss" class="ghost icon-btn small" aria-label="Ascunde"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div id="sourceStall" class="banner warn" hidden>
+      <svg class="i" aria-hidden="true"><use href="#i-info"/></svg>
+      <span>Bluetooth-ul merge, dar placa STM32 nu mai trimite citiri. Verifică alimentarea plăcii și cablul UART (GND comun).</span>
+    </div>
     <div id="reminder" class="banner info" hidden>
       <svg class="i" aria-hidden="true"><use href="#i-alarm"/></svg>
       <span id="reminderText"></span>
@@ -192,11 +202,19 @@
       </div>
     </section>
 
-    <section class="card agent-card" style="--i:2">
+    <section class="card agent-card" id="agentCard" style="--i:2">
       <div class="card-head">
         <h2><span class="agent-mark"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg></span>HydroGPT™</h2>
         <span class="engine" id="agentEngine">agent local</span>
         <button id="btnAsk" class="ghost small">Întreabă Consiliul</button>
+      </div>
+      <div id="agentLock" class="agent-lock" hidden>
+        <span class="lock-mark"><svg class="i lg" aria-hidden="true"><use href="#i-lock"/></svg></span>
+        <div>
+          <h3>HydroGPT e disponibil din Ultra</h3>
+          <p class="muted">Agentul urmărește sticla, îți spune când și cât să bei, îți răspunde la întrebări și își programează singur mementourile. Consiliul Organelor votează la fiecare decizie.</p>
+        </div>
+        <button id="btnUnlockAgent" class="primary">Vezi Ultra</button>
       </div>
       <div id="verdict" class="verdict" data-verdict="blind">
         <div class="verdict-title" id="verdictTitle">Aștept date de la sticlă</div>
@@ -211,7 +229,7 @@
           <svg class="i" aria-hidden="true"><use href="#i-send"/></svg>
         </button>
       </form>
-      <div class="foot-row">
+      <div class="foot-row" id="agentFoot">
         <span class="muted small" id="chatQuota"></span>
         <button id="btnReport" class="ghost small" hidden>
           <svg class="i" aria-hidden="true"><use href="#i-chart"/></svg>Raport KPI pentru board

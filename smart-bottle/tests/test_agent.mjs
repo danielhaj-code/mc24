@@ -15,6 +15,10 @@ t('abonamente complete', () => {
   for (const k of TIER_ORDER) assert.ok(TIERS[k].perks.length >= 3);
 });
 
+t('HydroGPT doar din Ultra', () => {
+  assert.deepEqual(TIER_ORDER.filter((k) => TIERS[k].agent), ['ultra', 'enterprise']);
+});
+
 t('precizia depinde de abonament', () => {
   assert.equal(displayMl(437, 'free'), 450);
   assert.equal(displayMl(437, 'pro'), 440);

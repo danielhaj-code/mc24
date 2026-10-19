@@ -11,7 +11,8 @@
  *
  * Comenzi pe Serial Monitor (USB, 115200):
  *   d = înghițitură   r = reumplere   l = ridică / pune sticla la loc
- *   a = pornește / oprește înghițiturile automate   ? = ajutor
+ *   a = pornește / oprește înghițiturile automate
+ *   f = îngheață / dezgheață „placa” (nu mai trimite nimic; testează heartbeat-ul)   ? = ajutor
  * Butonul BOOT (GPIO0) = înghițitură.
  */
 #pragma once
@@ -39,6 +40,7 @@ public:
 
   // Apelat din loop(). Emite o citire pe secundă.
   void tick() {
+    if (frozen_) return;                      // „STM32 blocat”: nu mai trimite nimic
     uint32_t now = millis();
     if (autoSips_ && sipLeft_ == 0 && (int32_t)(now - nextAutoSip_) >= 0) {
       startSip();
@@ -52,6 +54,7 @@ public:
 
   // O linie de la aplicație (fără '\n'). Înlocuiește ce ar fi primit STM32 pe UART.
   void handleCommand(const char *line) {
+    if (frozen_) return;
     if (line[0] == 'C' && line[1] == ',') {
       long e = 0, f = 0;
       if (sscanf(line + 2, "%ld,%ld", &e, &f) == 2 && e != f) {
@@ -74,6 +77,7 @@ public:
   }
   void refill() { level_ = 0.95f; Serial.println("[mock] reumplere"); }
   void toggleLift() { present_ = !present_; Serial.printf("[mock] sticla %s\n", present_ ? "pusă la loc" : "ridicată"); }
+  void toggleFreeze() { frozen_ = !frozen_; Serial.printf("[mock] sursa %s\n", frozen_ ? "înghețată (simulează STM32 blocat)" : "pornită"); }
   void toggleAuto() { autoSips_ = !autoSips_; Serial.printf("[mock] înghițituri automate: %s\n", autoSips_ ? "DA" : "NU"); }
 
 private:
@@ -121,6 +125,7 @@ private:
   int sipLeft_ = 0;
   bool present_ = true;
   bool autoSips_ = true;
+  bool frozen_ = false;
   uint32_t nextReading_ = 0, nextAutoSip_ = 0;
   long hist_[STABLE_N] = {0};
   int histPos_ = 0, histCount_ = 0;

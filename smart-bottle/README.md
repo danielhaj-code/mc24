@@ -76,6 +76,7 @@ mock-ul e o înlocuire temporară a plăcii, nu citește niciun senzor.
 | `r` | reumplere |
 | `l` | ridică / pune la loc sticla (aplicația afișează „sticla lipsește”) |
 | `a` | pornește / oprește înghițiturile automate (la 20–40 s) |
+| `f` | „îngheață” placa simulată: Bluetooth-ul merge, dar nu mai vin citiri (testează heartbeat-ul) |
 
 **Cu STM32 legat:** pune `#define MOCK_STM32 0` în `SmartBottleBridge.ino` (sau `-DMOCK_STM32=0`).
 Comunicația serială e deja implementată la ambele capete (UART5 pe STM32, `Serial2` pe ESP32, vezi Cablaj).
@@ -123,6 +124,18 @@ accente pastel albastru `#C8E0F4` și roz `#F5E0E8`, colțuri 14 / 28 / 42 px, i
 Fundalul are trei pete de lumină difuză care își schimbă culoarea după abonament (aurii pe Ultra,
 gri-albăstrui pe Enterprise).
 
+## Legătura Bluetooth: heartbeat și reconectare
+
+Aplicația și ESP32 își verifică reciproc legătura (detalii în [PROTOCOL.md](PROTOCOL.md#heartbeat)):
+ping la 5 s, reconectare automată după 10 s de liniște, buton „Reconectează” dacă nici așa nu merge,
+și un mesaj separat când Bluetooth-ul e în regulă dar placa STM32 nu mai trimite. Indicatorul din bara de
+sus arată *Conectat*, *Semnal slab*, *Se reconectează…* sau *Fără date*; la hover, vechimea ultimului mesaj
+și latența.
+
+**Pentru demonstrație** (în modul Demo, din consola browserului):
+`smartBottleDebug.stall(15)` simulează o legătură blocată (urmează reconectarea automată),
+`smartBottleDebug.freeze(20)` simulează o placă STM32 tăcută, `smartBottleDebug.health()` arată starea.
+
 ## HydroGPT™ și abonamentele (partea amuzantă)
 
 **Agentul.** Decizia „bea / așteaptă / reumple” o ia *Consiliul Organelor*: Rinichiul, Vezica și Creierul
@@ -137,10 +150,10 @@ poate programa mementouri. Dacă AI-ul din cloud nu răspunde, răspunde agentul
 |---|---|---|---|---|
 | Preț | 0 lei | 9,99 lei | 49,99 lei | Contactează vânzările |
 | Afișaj | rotunjit la ±50 mL | ±10 mL | la mililitru | la mililitru |
-| Chat | 3 întrebări / zi | nelimitat | nelimitat + AI în cloud | idem |
-| Personalitate | pasiv-agresiv, cu reclame | antrenor | somelier de apă | consultant corporatist |
+| HydroGPT | blocat | blocat | deblocat, cu AI în cloud | idem |
+| Personalitate | — | — | somelier de apă | consultant corporatist |
 | Extra | reclame la apă | grafic 7 zile | votul organelor, temă aurie | raport KPI pentru board |
-| Memento | la 60 min | la 20 min | la 10 min | la 5 min |
+| Memento | simplu, după câteva ore | simplu | agentul, la 10 min | agentul, la 5 min |
 
 Plata e 100% fictivă: niciun câmp de card, `checkout()` din baza de date emite o factură cu reducere 100%.
 
@@ -174,4 +187,5 @@ cd tests
 gcc -Wall -Wextra -I../stm32/Core/Inc test_host.c ../stm32/Core/Src/filter.c ../stm32/Core/Src/protocol.c -o t && ./t
 node test_logic.mjs
 node test_agent.mjs
+node test_link.mjs
 ```

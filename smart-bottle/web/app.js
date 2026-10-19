@@ -1,6 +1,6 @@
 import {
   SHAPES, volumeFraction, relativeHeight, mlFromRaw, levelColor, parseMessage,
-  EventDetector, dailyTotals, dayKey, calibrationCommand, ABSENT_BELOW,
+  EventDetector, dailyTotals, dayKey, calibrationCommand, ABSENT_BELOW, LinkMonitor,
 } from './logic.js';
 import { displayMl } from './agent.js';
 import { authGate } from './auth.js';
@@ -85,29 +85,51 @@ const db = {
 };
 
 /* =========================== Transport: Web Bluetooth =========================== */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Operațiile GATT pot rămâne agățate la nesfârșit când legătura se blochează; le limităm în timp.
+const withTimeout = (p, ms, what) => Promise.race([
+  p, new Promise((_, rej) => setTimeout(() => rej(new Error(`${what}: fără răspuns în ${ms / 1000} s`)), ms)),
+]);
+const RECONNECT_DELAYS = [500, 1500, 3000, 6000, 10000];   // ~21 s în total, apoi cerem un gest
+
 class BleDevice {
-  constructor() { this.device = null; this.rx = null; this.queue = Promise.resolve(); this.buf = ''; this.manual = false; }
+  constructor() {
+    this.device = null; this.rx = null; this.tx = null; this.buf = '';
+    this.queue = Promise.resolve();
+    this.manual = false; this.reconnecting = false;
+    this.onValue = (e) => this.receive(e.target.value);
+    this.onDrop = () => this.handleDrop();
+  }
 
   async connect(onLine, onState) {
     this.onLine = onLine; this.onState = onState; this.manual = false;
+    await this.pick();
+    this.onState('busy');
+    await this.attach();
+    this.onState('on');
+  }
+
+  // Alegerea dispozitivului (cere un gest al utilizatorului).
+  async pick() {
+    if (this.device) this.device.removeEventListener('gattserverdisconnected', this.onDrop);
     this.device = await navigator.bluetooth.requestDevice({
       filters: [{ services: [NUS_SERVICE] }, { name: 'SmartBottle' }],
       optionalServices: [NUS_SERVICE],
     });
-    this.device.addEventListener('gattserverdisconnected', () => this.handleDrop());
-    await this.attach();
+    this.device.addEventListener('gattserverdisconnected', this.onDrop);
   }
 
   async attach() {
-    this.onState('busy');
-    const server = await this.device.gatt.connect();
-    const svc = await server.getPrimaryService(NUS_SERVICE);
-    this.rx = await svc.getCharacteristic(NUS_RX);
-    const tx = await svc.getCharacteristic(NUS_TX);
-    tx.addEventListener('characteristicvaluechanged', (e) => this.receive(e.target.value));
-    await tx.startNotifications();
+    const server = await withTimeout(this.device.gatt.connect(), 10000, 'conectarea GATT');
+    const svc = await withTimeout(server.getPrimaryService(NUS_SERVICE), 5000, 'serviciul NUS');
+    this.rx = await withTimeout(svc.getCharacteristic(NUS_RX), 5000, 'caracteristica RX');
+    const tx = await withTimeout(svc.getCharacteristic(NUS_TX), 5000, 'caracteristica TX');
+    this.tx?.removeEventListener('characteristicvaluechanged', this.onValue);
+    this.tx = tx;
+    tx.addEventListener('characteristicvaluechanged', this.onValue);
+    await withTimeout(tx.startNotifications(), 5000, 'notificările');
     this.buf = '';
-    this.onState('on');
+    this.queue = Promise.resolve();   // o scriere agățată de pe vechea legătură nu mai blochează coada
   }
 
   receive(dataView) {
@@ -128,24 +150,58 @@ class BleDevice {
       if (!this.rx) return;
       for (let i = 0; i < bytes.length; i += 20) {
         const chunk = bytes.slice(i, i + 20);
-        if (this.rx.writeValueWithoutResponse) await this.rx.writeValueWithoutResponse(chunk);
-        else await this.rx.writeValue(chunk);
+        const w = this.rx.writeValueWithoutResponse ? this.rx.writeValueWithoutResponse(chunk) : this.rx.writeValue(chunk);
+        await withTimeout(w, 3000, 'scrierea BLE');
       }
-    }).catch((e) => console.warn('BLE write', e));
+    }).catch((e) => console.warn('BLE write', e.message));
     return this.queue;
   }
 
-  async handleDrop() {
+  // Cerută de heartbeat când legătura pare blocată deși browserul o crede deschisă.
+  forceReconnect() {
+    if (!this.manual && !this.reconnecting) this.reconnect();
+  }
+
+  handleDrop() {
     this.rx = null;
     if (this.manual) { this.onState('off'); return; }
-    // reconectare automată: 3 încercări cu pauză crescătoare
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      this.onState('busy');
-      await new Promise((r) => setTimeout(r, attempt * 1500));
+    if (!this.reconnecting) this.reconnect();
+  }
+
+  async reconnect() {
+    this.reconnecting = true;
+    this.rx = null;
+    this.onState('reconnecting');
+    try { if (this.device.gatt.connected) this.device.gatt.disconnect(); } catch { /* deja închisă */ }
+    for (const delay of RECONNECT_DELAYS) {
+      await sleep(delay);
       if (this.manual) break;
-      try { await this.attach(); this.onState('reconnected'); return; } catch { /* încercăm din nou */ }
+      try {
+        await this.attach();
+        this.reconnecting = false;
+        this.onState('reconnected');
+        return;
+      } catch (e) {
+        console.warn('reconectare', e.message);
+        try { this.device.gatt.disconnect(); } catch { /* nimic de închis */ }
+      }
     }
-    this.onState('off');
+    this.reconnecting = false;
+    this.onState(this.manual ? 'off' : 'lost');
+  }
+
+  // Din butonul „Reconectează” (gest al utilizatorului): întâi același dispozitiv,
+  // apoi, dacă nu se poate, o asociere nouă din lista Bluetooth.
+  async repair() {
+    this.manual = false;
+    this.onState('busy');
+    try {
+      await this.attach();
+    } catch {
+      await this.pick();
+      await this.attach();
+    }
+    this.onState('reconnected');
   }
 
   disconnect() {
@@ -156,9 +212,10 @@ class BleDevice {
 }
 
 /* =========================== Transport: simulator =========================== */
-// Imită STM32 + ESP32: emite "L,raw,pct,stable" la 1 s, cu înghițituri și reumpleri.
+// Imită STM32 + ESP32: emite "L,raw,pct,stable" la 1 s, cu înghițituri și reumpleri,
+// răspunde la ping ("P") și poate simula o legătură blocată sau o placă STM32 tăcută.
 class DemoDevice {
-  constructor() { this.timer = null; this.cal = { empty: 800, full: 3000 }; }
+  constructor() { this.timer = null; this.cal = { empty: 800, full: 3000 }; this.started = Date.now(); this.stallUntil = 0; this.freezeUntil = 0; }
   static RAW_EMPTY = 800;
   static RAW_FULL = 3000;
 
@@ -173,7 +230,11 @@ class DemoDevice {
     return Promise.resolve();
   }
 
+  get stalled() { return Date.now() < this.stallUntil; }
+  get frozen() { return Date.now() < this.freezeUntil; }
+
   tick() {
+    if (this.stalled || this.frozen) return;
     this.nextSip--;
     if (this.nextSip <= 0 && this.sipLeft === 0) {
       this.sipLeft = 3;
@@ -198,9 +259,15 @@ class DemoDevice {
   }
 
   send(text) {
+    if (this.stalled) return Promise.resolve();          // legătură blocată: nu răspunde nimic
     for (const line of text.split('\n')) {
       const p = line.trim().split(',');
-      if (p[0] === 'C' && p.length === 3) {
+      if (p[0] === 'P' && p.length === 1) {
+        const up = Math.floor((Date.now() - this.started) / 1000);
+        setTimeout(() => this.onLine(`P,${up},${this.frozen ? 0 : 1}`), 40);
+      } else if (this.frozen) {
+        continue;                                          // „STM32” tace, ESP32 răspunde doar la ping
+      } else if (p[0] === 'C' && p.length === 3) {
         const [e, f] = [Number(p[1]), Number(p[2])];
         if (e === f) { this.onLine('E,C'); } else { this.cal = { empty: e, full: f }; this.onLine('A,C'); }
       } else if (p[0] === 'R') {
@@ -208,6 +275,18 @@ class DemoDevice {
       }
     }
     return Promise.resolve();
+  }
+
+  // Simulări pentru demonstrații (din consolă: smartBottleDebug.stall(15) / .freeze(20)).
+  simulateStall(sec) { this.stallUntil = Date.now() + sec * 1000; }
+  simulateFreeze(sec) { this.freezeUntil = Date.now() + sec * 1000; }
+
+  forceReconnect() {
+    this.onState('reconnecting');
+    setTimeout(() => {               // o legătură nouă scapă de blocaj
+      this.stallUntil = 0;
+      this.onState('reconnected');
+    }, 1500);
   }
 
   disconnect() { clearInterval(this.timer); this.timer = null; this.onState('off'); }
@@ -230,7 +309,9 @@ const detector = new EventDetector({ drinkMin: cfg.drinkMin });
 /* =========================== Mesaje de la dispozitiv =========================== */
 function onLine(line) {
   const msg = parseMessage(line);
+  monitor.onMessage(msg, Date.now());   // orice mesaj dovedește că legătura trăiește
   if (!msg) return;
+  if (msg.type === 'pong') { renderLinkHealth(); return; }
   if (msg.type === 'calAck') { toast('Calibrare trimisă dispozitivului'); return; }
   if (msg.type === 'calErr') { toast('Dispozitivul a respins calibrarea (gol = plin)'); return; }
 
@@ -269,25 +350,76 @@ function onLine(line) {
 
 function onState(s) {
   const pill = $('connState');
-  pill.className = 'pill ' + (s === 'reconnected' ? 'on' : s);
-  if (s === 'busy') { pill.textContent = 'Se conectează…'; return; }
+  if (s === 'busy' || s === 'reconnecting') {
+    pill.className = 'pill busy';
+    pill.textContent = s === 'busy' ? 'Se conectează…' : 'Se reconectează…';
+    state.reconnecting = s === 'reconnecting';
+    return;
+  }
+  state.reconnecting = false;
   const on = s === 'on' || s === 'reconnected';
   state.connected = on;
-  pill.textContent = on ? (state.link instanceof DemoDevice ? 'Demo' : 'Conectat') : 'Deconectat';
   $('btnConnect').textContent = on ? 'Deconectează' : 'Conectează';
   $('btnConnect').disabled = false;
   $('btnDemo').hidden = on;
+  $('linkLost').hidden = s !== 'lost';
   if (on) {
+    state.lostLink = null;
     state.connectedSince = state.connectedSince ?? Date.now();
     detector.reset(null);                            // linie de bază nouă după (re)conectare
     state.link.send(calibrationCommand(cfg));        // STM32 ține calibrarea doar în RAM
     state.link.send('R\n');
+    startHeartbeat();
+    if (s === 'reconnected') toast('Reconectat');
   } else {
+    stopHeartbeat();
+    if (s === 'lost') state.lostLink = state.link;   // păstrat pentru butonul „Reconectează”
     state.connectedSince = null;
     state.link = null;
     hideReminder();
   }
+  renderLinkHealth();
   onConnectionChange();
+}
+
+/* =========================== Heartbeat: sănătatea legăturii =========================== */
+const monitor = new LinkMonitor();
+let hbTimer = null;
+
+function startHeartbeat() {
+  monitor.reset(Date.now());
+  clearInterval(hbTimer);
+  hbTimer = setInterval(heartbeat, 1000);
+}
+function stopHeartbeat() { clearInterval(hbTimer); hbTimer = null; }
+
+function heartbeat() {
+  if (!state.connected || !state.link || state.reconnecting) return;
+  const now = Date.now();
+  const action = monitor.tick(now);
+  if (action === 'ping') state.link.send('P\n');
+  if (action === 'reconnect') {
+    toast('Sticla nu mai răspunde. Mă reconectez…');
+    monitor.reset(now);
+    state.link.forceReconnect();
+  }
+  renderLinkHealth(now);
+}
+
+function renderLinkHealth(now = Date.now()) {
+  const pill = $('connState');
+  const h = state.connected && !state.reconnecting ? monitor.health(now) : null;
+  $('sourceStall').hidden = h !== 'source';
+  if (!state.connected || state.reconnecting) {
+    if (!state.reconnecting && !pill.classList.contains('busy')) { pill.className = 'pill off'; pill.textContent = 'Deconectat'; }
+    if (!state.reconnecting) pill.removeAttribute('title');
+    return;
+  }
+  const demo = state.link instanceof DemoDevice;
+  pill.className = 'pill ' + ({ ok: 'on', quiet: 'weak', stalled: 'weak', source: 'warn' }[h]);
+  pill.textContent = h === 'ok' ? (demo ? 'Demo' : 'Conectat') : h === 'source' ? 'Fără date' : 'Semnal slab';
+  const ago = Math.round((now - monitor.lastRx) / 1000);
+  pill.title = `Ultimul mesaj: acum ${ago} s` + (monitor.rtt !== null ? `, latență ${monitor.rtt} ms` : '');
 }
 
 /* =========================== Desen: sticla =========================== */
@@ -352,7 +484,9 @@ function startOfToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d
 function renderDayChart() {
   const svg = $('chartDay');
   svg.replaceChildren();
-  const W = 320, H = 140, top = 8, bottom = 128;
+  // viewBox la lățimea reală: textul rămâne la 10 px, nu se întinde odată cu cardul
+  const W = Math.max(240, Math.round(svg.clientWidth || 320)), H = 140, top = 8, bottom = 128;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   for (const f of [0, 0.5, 1]) {
     const y = bottom - f * (bottom - top);
     svg.append(el('line', { x1: 0, x2: W, y1: y, y2: y, class: 'grid-line' }));
@@ -384,7 +518,8 @@ function renderWeekChart() {
   $('weekLock').hidden = !locked;
   $('weekWrap').classList.toggle('locked', locked);
   const data = dailyTotals(state.events, 7);
-  const W = 320, top = 14, bottom = 128;
+  const W = Math.max(240, Math.round(svg.clientWidth || 320)), top = 14, bottom = 128;
+  svg.setAttribute('viewBox', `0 0 ${W} 150`);
   const max = Math.max(cfg.goal * 1.15, ...data.map((d) => d.ml), 1);
   const slot = W / 7, bw = slot * 0.56;
   const gy = bottom - (cfg.goal / max) * (bottom - top);
@@ -575,6 +710,8 @@ async function exportCsv() {
 /* =========================== Conectare =========================== */
 async function toggleConnect() {
   if (state.link) { state.link.disconnect(); return; }
+  state.lostLink = null;
+  $('linkLost').hidden = true;
   if (!navigator.bluetooth) { toast('Web Bluetooth nu e disponibil aici — încearcă Demo'); return; }
   $('btnConnect').disabled = true;
   state.link = new BleDevice();
@@ -584,6 +721,21 @@ async function toggleConnect() {
     state.link = null;
     onState('off');
     if (e.name !== 'NotFoundError') toast('Conectarea a eșuat: ' + e.message);   // NotFoundError = utilizatorul a închis dialogul
+  }
+}
+
+async function repairLink() {
+  const link = state.lostLink;
+  if (!link) return;
+  $('btnRepair').disabled = true;
+  state.link = link;
+  try {
+    await link.repair();
+  } catch (e) {
+    onState('lost');                    // păstrează legătura pentru o nouă încercare
+    if (e.name !== 'NotFoundError') toast('Nu am putut reconecta: ' + e.message);
+  } finally {
+    $('btnRepair').disabled = false;
   }
 }
 
@@ -620,6 +772,15 @@ async function init() {
 
   $('btnConnect').addEventListener('click', toggleConnect);
   $('btnDemo').addEventListener('click', startDemo);
+  $('btnRepair').addEventListener('click', repairLink);
+  $('btnLostDismiss').addEventListener('click', () => { $('linkLost').hidden = true; state.lostLink = null; });
+
+  // Pentru demonstrații: simulează o legătură blocată sau o placă STM32 care nu mai trimite.
+  window.smartBottleDebug = {
+    stall: (sec = 15) => state.link?.simulateStall?.(sec) ?? 'merge doar în modul Demo',
+    freeze: (sec = 20) => state.link?.simulateFreeze?.(sec) ?? 'merge doar în modul Demo',
+    health: () => ({ health: monitor.health(Date.now()), lastRxMsAgo: Date.now() - monitor.lastRx, rtt: monitor.rtt, stalls: monitor.stalls, reboots: monitor.reboots }),
+  };
 
   await db.open();
   await db.deleteBefore('readings', Date.now() - 30 * DAY_MS);   // istoric detaliat: 30 de zile
@@ -631,6 +792,10 @@ async function init() {
 
   renderToday(); renderEvents(); renderWeekChart(); renderDayChart();
   setInterval(checkReminder, 30000);
+  // graficele se redesenează când se schimbă lățimea cardului
+  let resizeTimer;
+  new ResizeObserver(() => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { renderDayChart(); renderWeekChart(); }, 120); })
+    .observe($('chartWeek').parentElement);
 
   await authGate();
   initHydro({

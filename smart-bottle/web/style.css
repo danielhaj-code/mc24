@@ -113,7 +113,12 @@ body {
 .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #B9C3CF; }
 .pill.on { color: var(--blue-ink); }
 .pill.on::before { background: var(--blue-deep); box-shadow: 0 0 0 4px rgba(94, 143, 189, .18); }
-.pill.busy::before { background: #E3B868; }
+.pill.busy::before { background: #E3B868; animation: pulse 1.2s ease-in-out infinite; }
+.pill.weak { color: #7A5A1E; }
+.pill.weak::before { background: #E3B868; }
+.pill.warn { color: var(--pink-deep); }
+.pill.warn::before { background: var(--pink-deep); }
+@keyframes pulse { 50% { opacity: .35; } }
 
 /* =========================== Butoane =========================== */
 button {
@@ -153,6 +158,9 @@ button.link:hover { color: var(--blue-ink); }
 .banner .i { color: var(--blue-deep); }
 .banner.info { background: rgba(200, 224, 244, .55); }
 .banner.ad { background: rgba(245, 224, 232, .7); }
+.banner.alert { background: rgba(245, 224, 232, .85); }
+.banner.alert .i, .banner.warn .i { color: var(--pink-deep); }
+.banner.warn { background: rgba(244, 231, 197, .75); }
 .ad-tag { font-size: .75rem; font-weight: 600; color: var(--pink-deep); background: var(--white); padding: 2px 10px; border-radius: 99px; }
 
 /* =========================== Grilă asimetrică =========================== */
@@ -255,7 +263,7 @@ p.small { margin: 0 0 16px; }
 .today { display: flex; flex-direction: column; }
 .charts { display: grid; gap: 28px; margin-top: 32px; flex: 1; align-content: space-between; }
 .chart { width: 100%; height: auto; display: block; }
-#chartDay { height: 150px; }
+#chartDay { height: 140px; }
 .chart .grid-line { stroke: rgba(38, 50, 64, .07); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .chart .series { fill: none; stroke: var(--blue-deep); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 .chart .area { fill: var(--blue); opacity: .55; }
@@ -505,3 +513,10 @@ body:not([data-auth]) .layout { visibility: hidden; }   /* până știm dacă e�
 .admin-list .status[data-state="active"] { background: var(--blue); color: var(--blue-ink); }
 .admin-list .status[data-state="admin"] { background: #DCE3EC; color: #2E3D4F; }
 .admin-list .status[data-state="invited"] { background: var(--pink); color: var(--pink-deep); }
+
+/* HydroGPT blocat sub Ultra */
+.agent-lock { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px; padding: 28px; border-radius: 22px; background: var(--base); box-shadow: var(--inset); }
+.agent-lock h3 { font-size: 1.125rem; font-weight: 650; color: var(--ink); margin: 0 0 6px; }
+.agent-lock p { margin: 0; max-width: 60ch; line-height: 1.55; }
+.lock-mark { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(160deg, #F4E7C5, var(--base)); box-shadow: var(--raise-sm); color: #8A6A24; }
+@media (max-width: 680px) { .agent-lock { grid-template-columns: 1fr; text-align: center; justify-items: center; } }

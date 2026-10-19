@@ -55,6 +55,10 @@ then confirm it works. Nothing else: no refactors, no changes to the web app or 
    a phone is connected, so ask Daniel to open the website, press **Conectează** and pick
    `SmartBottle`. Then type `d` in the monitor (or press BOOT): the app should log a sip within
    a few seconds. `r` refills, `l` lifts the bottle off, `a` toggles automatic sips.
+7. Heartbeat check: with the app connected, type `f` (freezes the simulated STM32). Within ~5 s the
+   app's status should read "Fără date" with a banner about the STM32, and it must **not** reconnect.
+   Type `f` again to resume. Then press the ESP32's EN/RESET button: the app should show
+   "Se reconectează…" and come back by itself within ~20 s.
 
 ## Rules
 
