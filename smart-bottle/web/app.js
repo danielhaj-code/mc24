@@ -782,6 +782,25 @@ function toast(text) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
+/* =========================== Ferestre: închidere la click în afară =========================== */
+// Toate ferestrele (setări, abonamente, raport, acces) se închid la click/tap pe fundalul din jur.
+// Reclama video nu e „.sheet”, deci rămâne imposibil de închis. closedby="any" e varianta nativă
+// din browserele noi; codul de mai jos acoperă și browserele care nu o au.
+function closeSheetsOnOutsideClick() {
+  for (const d of document.querySelectorAll('dialog.sheet')) {
+    d.setAttribute('closedby', 'any');
+    let downOutside = false;
+    const outside = (e) => {
+      if (e.target !== d) return false;           // clicul a nimerit conținutul ferestrei
+      const r = d.getBoundingClientRect();
+      return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+    };
+    // apăsarea ȘI ridicarea trebuie să fie în afară: o selecție de text care iese din fereastră nu o închide
+    d.addEventListener('pointerdown', (e) => { downOutside = outside(e); });
+    d.addEventListener('click', (e) => { if (downOutside && outside(e)) d.close(); downOutside = false; });
+  }
+}
+
 /* =========================== Pornire =========================== */
 async function init() {
   let unsupportedHidden = false;
@@ -833,6 +852,8 @@ async function init() {
 
   // scurtătura „Demo” din aplicația instalată
   if (new URLSearchParams(location.search).has('demo')) startDemo();
+
+  closeSheetsOnOutsideClick();
 
   initMobile({
     wakeLockEnabled: () => cfg.wakeLock,
