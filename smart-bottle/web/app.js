@@ -827,6 +827,7 @@ async function init() {
   await authGate();
   initHydro({
     cfg, state, saveSettings, toast, todayEvents, notify: systemNotify,
+    loadLocalEvents: (since) => db.since('events', since),
     onTierChange: () => { renderReadout(); renderWeekChart(); },
   });
 

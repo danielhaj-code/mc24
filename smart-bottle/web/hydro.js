@@ -7,6 +7,7 @@ import {
 import { cloud } from './cloud.js';
 import { initAds, refreshAds, playUnskippable } from './ads.js';
 import { dayKey } from './logic.js';
+import { initHabits, refreshHabits, habitsChanged } from './habits.js';
 
 const $ = (id) => document.getElementById(id);
 // Iconițe din sprite-ul Lucide din index.html
@@ -187,6 +188,7 @@ function nudgeLoop() {
 
 export function onEvent(ev) {
   cloud.pushEvents([ev]).then(refreshBoard);
+  habitsChanged();
   if (!agentOn()) return;
   const ctx = context();
   agentSay(reactToEvent(ev, tier(), ctx));
@@ -215,6 +217,7 @@ function applyTier() {
     if (!greeted) { greeted = true; agentSay('Salut! Sunt HydroGPT™. Îți urmăresc sticla și îți spun când să bei. Întreabă-mă orice (despre apă).'); }
   }
   app.onTierChange();
+  refreshHabits();
 }
 
 function renderTiers() {
@@ -353,6 +356,22 @@ export async function initHydro(api) {
     },
   });
 
+  initHabits({
+    enabled: () => agentOn(),
+    goal: () => app.cfg.goal,
+    // din cloud când ești logat (toate dispozitivele), altfel din istoricul local
+    loadEvents: async (days) => {
+      const since = Date.now() - days * 86400000;
+      if (cloud.ready) {
+        const { data, error } = await cloud.sb.from('drink_events').select('ts, kind, ml')
+          .gte('ts', new Date(since).toISOString()).order('ts').limit(5000);
+        if (!error) return data;
+      }
+      return app.loadLocalEvents(since);
+    },
+    ask: (q) => { $('agentCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); ask(q); },
+    openTiers: () => { $('invoice').hidden = true; renderTiers(); $('tiersDialog').showModal(); },
+  });
   applyTier();
 
   setInterval(nudgeLoop, 30000);

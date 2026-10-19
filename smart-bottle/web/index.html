@@ -240,6 +240,42 @@
       </div>
     </section>
 
+    <section class="card habits" id="habitsCard" style="--i:3">
+      <div class="card-head">
+        <h2>Obiceiurile tale</h2>
+        <div class="seg" id="habitsRange" role="group" aria-label="Perioada">
+          <button type="button" data-days="7" aria-pressed="false">7 zile</button>
+          <button type="button" data-days="30" aria-pressed="true">30 de zile</button>
+        </div>
+      </div>
+      <p class="muted small habits-source" id="habitsSource"></p>
+      <div id="habitsEmpty" class="habits-empty" hidden>
+        <svg class="i lg" aria-hidden="true"><use href="#i-chart"/></svg>
+        <span>Încă n-avem destule înghițituri ca să vedem un tipar. Bea câteva zile cu sticla conectată și revino.</span>
+      </div>
+      <div id="habitsBody" class="habits-body">
+        <div class="habits-stats" id="habitsStats"></div>
+        <div class="habits-charts">
+          <figure>
+            <figcaption>La ce ore bei (medie pe zi)</figcaption>
+            <svg id="habitsHours" class="chart habits-chart" viewBox="0 0 560 150" aria-label="Consum pe ore"></svg>
+          </figure>
+          <figure>
+            <figcaption>Pe zile ale săptămânii</figcaption>
+            <svg id="habitsWeek" class="chart habits-chart" viewBox="0 0 320 150" aria-label="Consum pe zile ale săptămânii"></svg>
+          </figure>
+        </div>
+        <ul class="habits-findings" id="habitsFindings"></ul>
+        <button id="habitsAsk" class="ghost small" hidden><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg>Întreabă HydroGPT ce să schimbi</button>
+      </div>
+      <div id="habitsLock" class="habits-lock" hidden>
+        <svg class="i lg" aria-hidden="true"><use href="#i-lock"/></svg>
+        <strong>Analiza obiceiurilor e în Ultra</strong>
+        <span class="muted small">Orele în care bei, zilele slabe, seriile și tendința, din istoricul tău real.</span>
+        <button id="habitsUnlock" class="primary small">Vezi Ultra</button>
+      </div>
+    </section>
+
     <section class="card board" id="secBoard" style="--i:3">
       <div class="card-head">
         <h2>Clasamentul zilei</h2>

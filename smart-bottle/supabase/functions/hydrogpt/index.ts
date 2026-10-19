@@ -11,6 +11,7 @@
 //   402 { fallback:true } pe Free/Pro (AI-ul adevărat e premium, evident)
 //   503 { fallback:true } fără cheie sau dacă modelul nu răspunde → aplicația folosește agentul local
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { computeInsights } from './insights.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -39,6 +40,11 @@ const TOOLS = [{
       name: 'get_drink_history',
       description: 'Totalul băut pe fiecare zi, pentru ultimele N zile (din baza de date).',
       parameters: { type: 'object', properties: { days: { type: 'integer', description: 'între 1 și 30' } }, required: ['days'] },
+    },
+    {
+      name: 'get_drink_insights',
+      description: 'Analiza obiceiurilor din istoricul real: orele din zi în care bea cel mai mult, intervalul din zi în care aproape nu bea, media pe zilele săptămânii (lucru vs weekend), mărimea medie a înghițiturii, prima și ultima înghițitură tipică, reumpleri pe zi, zile cu obiectivul atins, serii, ziua cea mai bună/slabă și tendința ultimelor 7 zile față de cele 7 dinainte. Folosește-o pentru orice întrebare despre obiceiuri, tendințe sau „când beau”.',
+      parameters: { type: 'object', properties: { days: { type: 'integer', description: 'între 7 și 60; implicit 30' } } },
     },
     {
       name: 'schedule_reminder',
@@ -88,8 +94,9 @@ Deno.serve(async (req) => {
     'Ești HydroGPT™, agentul de hidratare al aplicației Smart Bottle (proiect de facultate, USV).',
     PERSONA[tier],
     `Utilizatorul se numește „${profile?.nickname ?? 'anonim'}”.`,
-    'Răspunzi DOAR în română, maximum 3 propoziții, amuzant, dar cu cifre reale.',
+    'Răspunzi DOAR în română, maximum 3 propoziții (5 pentru analize de obiceiuri), amuzant, dar cu cifre reale.',
     'Înainte să recomanzi ceva, apelează get_hydration_status. Nu inventa cifre.',
+    'Pentru întrebări despre obiceiuri, tendințe, ore sau zile, apelează get_drink_insights și citează 2-3 cifre concrete (ex. ora de vârf cu procentul ei din toată apa sau media pe zi, media în weekend, tendința); nu folosi totaluri pe toată perioada. Orele sunt ora României.',
     'Dacă recomanzi să aștepte, poți programa un memento cu schedule_reminder. Nu spune că ai programat un memento dacă nu ai apelat unealta.',
     'bottleMl înseamnă câtă apă e acum în sticlă; capacity e capacitatea sticlei.',
     'Nu dai sfaturi medicale; pentru probleme de sănătate trimiți politicos la medic.',
@@ -118,6 +125,19 @@ Deno.serve(async (req) => {
       }
       return { days, goal_ml: profile?.goal_ml ?? 2000, totals: byDay };
     }
+    if (name === 'get_drink_insights') {
+      const days = Math.min(60, Math.max(7, Number(args.days) || 30));
+      const since = new Date(Date.now() - (days + 1) * 86400000).toISOString();
+      const { data } = await sb.from('drink_events').select('ts, kind, ml').gte('ts', since).order('ts').limit(5000);
+      const ins = computeInsights(data ?? [], { goal: profile?.goal_ml ?? 2000, days });
+      // pentru model: fără zilele goale și fără orele fără consum, ca răspunsul să rămână mic
+      return {
+        ...ins,
+        byHour: ins.byHour.filter((h) => h.sips > 0).map(({ hour, avgMl, share, sips }) => ({ hour, avgMlPerDay: avgMl, share, sips })),
+        byWeekday: ins.byWeekday.filter((w) => w.days > 0),
+        daily: ins.daily.slice(-14),
+      };
+    }
     if (name === 'schedule_reminder') {
       const minutes = Math.min(240, Math.max(1, Math.round(Number(args.minutes) || 30)));
       const message = String(args.message ?? 'Bea apă.').slice(0, 200);
@@ -136,7 +156,7 @@ Deno.serve(async (req) => {
           systemInstruction: { parts: [{ text: system }] },
           contents,
           tools: TOOLS,
-          generationConfig: { temperature: 0.9, maxOutputTokens: 400 },
+          generationConfig: { temperature: 0.9, maxOutputTokens: 600 },
         }),
       });
       if (!res.ok) {

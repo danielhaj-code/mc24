@@ -171,6 +171,26 @@ nu închide nimic și text care curge. Un banner stă lipit sus (pe telefon, jos
 și apar la Demo, după conectare, la calibrare și la export (cel mult una pe minut). „Elimină reclamele”
 pornește, evident, cu o reclamă de 3 s.
 
+## Obiceiurile tale (Ultra)
+
+Cardul *Obiceiurile tale* arată, pe 7 sau 30 de zile, la ce ore bei (cu vârful și intervalul din zi în care
+uiți de apă), media pe zilele săptămânii față de obiectiv, zilele cu obiectivul atins, seria curentă și
+recordul, înghițitura tipică și tendința ultimelor 7 zile. Datele vin din Supabase (toate dispozitivele)
+sau, fără cont, din istoricul local. Sub Ultra cardul e blocat, cu date de exemplu estompate.
+
+HydroGPT are unealta `get_drink_insights`, care face aceeași analiză pe server, așa că îl poți întreba
+„la ce ore beau cel mai mult?” sau „cum am stat săptămâna asta?” și răspunde cu cifre reale.
+Logica e în `web/insights.js`; funcția Supabase are o copie identică (`supabase/sync-shared.sh` o
+actualizează, iar `tests/test_insights.mjs` verifică să nu difere).
+
+## Conturi demo
+
+Opt conturi inventate (`*@demo.smartbottle.invalid`, pe lista de acces cu nota „cont demo”) au 30 de
+zile de istoric, fiecare cu alt tipar (matinal, după-amiaza, seara, doar la laborator, weekend slab).
+Un job `pg_cron` (`demo-sips`, la 20 de minute) le adaugă înghițituri pe parcursul zilei, ca clasamentul
+să nu fie gol dimineața. Conturile reale au primit același tip de istoric pentru ultimele 30 de zile
+(rândurile generate au `client_id` cu prefixul `seed-` și pot fi șterse oricând).
+
 ## Cloud (Supabase)
 
 Proiectul e deja configurat (`web/config.js`). Fără internet, aplicația merge mai departe doar local.
@@ -202,4 +222,5 @@ gcc -Wall -Wextra -I../stm32/Core/Inc test_host.c ../stm32/Core/Src/filter.c ../
 node test_logic.mjs
 node test_agent.mjs
 node test_link.mjs
+node test_insights.mjs
 ```
