@@ -1,10 +1,11 @@
 // Interfața pentru HydroGPT™, abonamente, reclame, clasament și raportul Enterprise.
 // Logica deciziilor e în agent.js; aici e doar DOM-ul și legătura cu cloud.js.
 import {
-  TIERS, TIER_ORDER, ADS, buildContext, decide, speak, reasoningTrace,
+  TIERS, TIER_ORDER, buildContext, decide, speak, reasoningTrace,
   reactToEvent, localReply, kpiReport,
 } from './agent.js';
 import { cloud } from './cloud.js';
+import { initAds, refreshAds, playUnskippable } from './ads.js';
 import { dayKey } from './logic.js';
 
 const $ = (id) => document.getElementById(id);
@@ -23,7 +24,6 @@ let app;                       // { cfg, state, saveSettings, toast, todayEvents
 const chat = [];               // { role: 'user'|'agent', text }
 let lastNudge = Date.now();
 let speech = { key: '', text: '' };
-let adIdx = 0;
 let cloudNoteShown = false;
 let busy = false;
 
@@ -199,7 +199,7 @@ function applyTier() {
   const t = tier();
   document.documentElement.dataset.tier = t;
   $('btnTier').textContent = T().name;
-  $('adBanner').hidden = !T().ads;
+  refreshAds();
   $('btnReport').hidden = !T().report;
   $('agentEngine').textContent = T().llm && cloud.ready ? 'AI în cloud' : 'agent local';
   const on = agentOn();
@@ -323,7 +323,6 @@ function openReport() {
 export async function initHydro(api) {
   app = api;
   $('btnTier').addEventListener('click', () => { $('invoice').hidden = true; renderTiers(); $('tiersDialog').showModal(); });
-  $('btnNoAds').addEventListener('click', () => { renderTiers(); $('tiersDialog').showModal(); });
   $('weekLock').addEventListener('click', () => { renderTiers(); $('tiersDialog').showModal(); });
   $('btnReport').addEventListener('click', openReport);
   $('btnUnlockAgent').addEventListener('click', () => { $('invoice').hidden = true; renderTiers(); $('tiersDialog').showModal(); });
@@ -344,12 +343,15 @@ export async function initHydro(api) {
     catch (e) { app.toast('Nu am putut salva: ' + e.message); }
   });
 
-  setInterval(() => {
-    if (!T().ads) return;
-    adIdx = (adIdx + 1) % ADS.length;
-    $('adText').textContent = ADS[adIdx];
-  }, 12000);
-  $('adText').textContent = ADS[0];
+  initAds({
+    enabled: () => T().ads,
+    toast: app.toast,
+    // „Elimină reclamele” începe, desigur, cu o reclamă.
+    onRemoveAds: async () => {
+      await playUnskippable('removeAds', { seconds: 3, force: true });
+      $('invoice').hidden = true; renderTiers(); $('tiersDialog').showModal();
+    },
+  });
 
   applyTier();
 

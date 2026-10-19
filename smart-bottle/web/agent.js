@@ -37,15 +37,6 @@ export function displayMl(ml, tier) {
   return Math.round(ml / step) * step;
 }
 
-export const ADS = [
-  'Ți-e sete? Încearcă APA™ — 0 calorii, 0 zahăr, 100% apă.',
-  'APA™ Premium: acum și udă.',
-  'Rinichii tăi merită APA™. Și Pro.',
-  'Studiile arată că 9 din 10 pești preferă APA™.',
-  'Nou! APA™ Light — cu 0% mai puțină apă.',
-  'Upgrade la Pro și reclama asta dispare. Ca apa din sticla ta.',
-];
-
 /* =========================== Context =========================== */
 export const WAKE_HOUR = 8;
 export const SLEEP_HOUR = 22;

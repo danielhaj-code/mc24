@@ -46,10 +46,9 @@ function renderAccount() {
   $('btnSignOut').hidden = !cloud.ready;
   $('btnSignOut').title = cloud.user?.email ? `Ieși din ${cloud.user.email}` : 'Ieși din cont';
   $('btnAdmin').hidden = !cloud.admin;
-  // pe telefon, contul stă în cardul de setări (bara de sus n-are loc)
+  // contul stă în fereastra de setări
   $('accountRow').hidden = !cloud.ready;
-  $('accountEmail').textContent = cloud.user?.email ? `Contul ${cloud.user.email}` : '';
-  $('btnAdmin2').hidden = !cloud.admin;
+  $('accountEmail').textContent = cloud.user?.email ?? '';
 }
 
 /* =========================== Panoul de administrare =========================== */
@@ -122,8 +121,6 @@ export function authGate() {
   });
   $('btnAdmin').addEventListener('click', () => { $('adminError').hidden = true; renderAdmin(); $('adminDialog').showModal(); });
   $('adminForm').addEventListener('submit', addEmail);
-  $('btnAdmin2').addEventListener('click', () => $('btnAdmin').click());
-  $('btnSignOut2').addEventListener('click', () => $('btnSignOut').click());
 
   return new Promise(async (resolve) => {
     $('authGoogle').addEventListener('click', async () => {

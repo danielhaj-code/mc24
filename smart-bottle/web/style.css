@@ -157,11 +157,10 @@ button.link:hover { color: var(--blue-ink); }
 .banner > button { margin-left: auto; }
 .banner .i { color: var(--blue-deep); }
 .banner.info { background: rgba(200, 224, 244, .55); }
-.banner.ad { background: rgba(245, 224, 232, .7); }
 .banner.alert { background: rgba(245, 224, 232, .85); }
 .banner.alert .i, .banner.warn .i { color: var(--pink-deep); }
 .banner.warn { background: rgba(244, 231, 197, .75); }
-.ad-tag { font-size: .75rem; font-weight: 600; color: var(--pink-deep); background: var(--white); padding: 2px 10px; border-radius: 99px; }
+
 
 /* =========================== Grilă asimetrică =========================== */
 .layout {
@@ -172,13 +171,13 @@ button.link:hover { color: var(--blue-ink); }
 }
 .hero { grid-column: span 5; }
 .today { grid-column: span 7; }
-.agent-card { grid-column: span 8; }
+.layout { grid-auto-flow: dense; }
+.agent-card { grid-column: span 8; grid-row: span 2; }
 .board { grid-column: span 4; }
-.events-card { grid-column: span 5; }
-.settings { grid-column: span 7; }
+.events-card { grid-column: span 4; }
 @media (max-width: 1023px) {
   .hero, .today, .board, .events-card { grid-column: span 6; }
-  .agent-card, .settings { grid-column: span 12; }
+  .agent-card { grid-column: span 12; grid-row: auto; }
 }
 @media (max-width: 767px) {
   .layout > .card { grid-column: 1 / -1; }
@@ -449,9 +448,173 @@ dialog.sheet::backdrop { background: rgba(38, 50, 64, .16); backdrop-filter: blu
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* =========================== Reclame (Free) =========================== */
+.ad-tag { font-size: .6875rem; font-weight: 600; letter-spacing: .02em; color: #6B5420; background: #F4E7C5; padding: 2px 8px; border-radius: 6px; }
+.native-ad { display: grid; gap: 16px; align-items: center; color: var(--ink); }
+.native-ad .ad-art { border-radius: 16px; overflow: hidden; background: var(--ad-bg); box-shadow: var(--raise-sm); }
+.native-ad .ad-art svg { display: block; width: 100%; height: 100%; }
+.ad-meta { display: flex; align-items: center; gap: 8px; font-size: .8125rem; color: var(--muted); }
+.ad-adv { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ad-why { margin-left: auto; min-height: 0 !important; width: 22px; height: 22px; padding: 0; border-radius: 50%; font: italic 600 12px/1 Georgia, serif; color: var(--muted); border: 1px solid #D8DFE8; background: transparent; }
+.ad-head { font-weight: 650; font-size: 1.0625rem; line-height: 1.35; margin: 6px 0 2px; letter-spacing: -.01em; }
+.ad-body { font-size: .875rem; color: var(--muted); line-height: 1.5; }
+.ad-row { display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+.ad-cta { background: var(--ad-bg); color: var(--ad-ink); border: 1px solid rgba(38, 50, 64, .12); padding: 8px 16px; font-size: .875rem; box-shadow: var(--raise-sm); }
+.ad-cta:hover { filter: brightness(.96); }
+.ad-remove { margin-left: 0 !important; font-size: .8125rem !important; }
+
+/* banner, în zona de anunțuri */
+.ad-slot { padding: 12px; border-radius: var(--r-sm); background: var(--surface); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: var(--raise-sm); }
+.native-ad.banner { grid-template-columns: 132px 1fr; gap: 16px; }
+.native-ad.banner .ad-art { aspect-ratio: 4 / 3; border-radius: 12px; }
+.native-ad.banner .ad-head { font-size: .9375rem; }
+.native-ad.banner .ad-body { display: none; }
+.native-ad.banner .ad-row { margin-top: 8px; }
+
+/* card sponsorizat, între carduri, pe toată lățimea */
+.ad-feed { grid-column: 1 / -1; }
+.native-ad.feed { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(20px, 3vw, 36px); }
+.native-ad.feed .ad-art { aspect-ratio: 4 / 3; }
+.native-ad.feed .ad-head { font-size: clamp(1.25rem, 2.2vw, 1.625rem); }
+.native-ad.feed .ad-body { font-size: .9375rem; max-width: 52ch; }
+
+/* reclama video care nu se poate sări */
+dialog.ad-player {
+  width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
+  background: var(--ad-bg); color: var(--ad-ink); overflow: hidden;
+  display: none; grid-template-rows: auto auto auto 1fr auto auto; justify-items: center;
+}
+dialog.ad-player[open] { display: grid; animation: fade-in 200ms ease-out both; }
+dialog.ad-player::backdrop { background: #1A1F26; }
+@keyframes fade-in { from { opacity: 0; } }
+.ad-player-bar { width: 100%; height: 4px; background: rgba(127, 127, 127, .25); }
+.ad-player-progress { display: block; height: 100%; background: #F2C94C; transform-origin: left; transform: scaleX(0); }
+.ad-player.playing .ad-player-progress { animation: ad-progress var(--ad-dur, 5s) linear forwards; }
+@keyframes ad-progress { to { transform: scaleX(1); } }
+.ad-player-top { width: min(720px, 100%); display: flex; align-items: center; gap: 10px; padding: 16px 20px 0; font-size: .875rem; }
+.ad-player-adv { font-weight: 600; opacity: .85; }
+.ad-player-mute { margin-left: auto; opacity: .6; }
+.ad-player-mute .i { stroke: currentColor; }
+.ad-player-reason { margin: 10px 20px 0; font-size: .875rem; opacity: .7; text-align: center; }
+.ad-player-stage { width: min(560px, calc(100% - 40px)); align-self: center; border-radius: 24px; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .45); }
+.ad-player-stage svg { display: block; width: 100%; height: auto; }
+.ad-player.playing .ad-player-stage svg { animation: ken-burns var(--ad-dur, 5s) ease-out both; }
+@keyframes ken-burns { from { transform: scale(1.18) translateY(4%); } to { transform: scale(1); } }
+.ad-player-copy { width: min(560px, calc(100% - 40px)); text-align: center; padding: 20px 0 8px; }
+.ad-player-head { font-size: clamp(1.375rem, 4.5vw, 2rem); font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+.ad-player-body { margin-top: 8px; opacity: .78; line-height: 1.5; }
+.ad-player.playing .ad-player-head { animation: rise 500ms var(--ease) 400ms both; }
+.ad-player.playing .ad-player-body { animation: rise 500ms var(--ease) 1100ms both; }
+.ad-player-foot { width: min(720px, 100%); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px calc(20px + env(safe-area-inset-bottom)); }
+.ad-player-count { font-size: .875rem; padding: 8px 14px; border-radius: 99px; background: rgba(127, 127, 127, .18); font-variant-numeric: tabular-nums; }
+.bubbles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.bubbles i { position: absolute; bottom: -40px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; opacity: .18; animation: bubble 6s linear infinite; }
+.bubbles i:nth-child(1) { left: 8%; animation-delay: 0s; }
+.bubbles i:nth-child(2) { left: 22%; width: 8px; height: 8px; animation-delay: 1.4s; }
+.bubbles i:nth-child(3) { left: 46%; width: 20px; height: 20px; animation-delay: .6s; }
+.bubbles i:nth-child(4) { left: 68%; animation-delay: 2.2s; }
+.bubbles i:nth-child(5) { left: 84%; width: 10px; height: 10px; animation-delay: 3s; }
+.bubbles i:nth-child(6) { left: 93%; width: 18px; height: 18px; animation-delay: 4.1s; }
+@keyframes bubble { to { transform: translateY(-110dvh); } }
+
+/* =========================== Reclame „ieftine” (Free) =========================== */
+/* Intenționat în afara sistemului de design: colțuri drepte, bandă de avertizare, culori țipătoare,
+   imagine supra-saturată cu zgomot, preț tăiat, cronometru fals, X fals, text care curge. */
+.ad-slot { padding: 0; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0; }
+.junk-ad {
+  --hazard: repeating-linear-gradient(45deg, #111 0 10px, #FFE600 10px 20px);
+  position: relative; display: grid; color: var(--ad-ink); background: var(--ad-bg);
+  border: 4px solid transparent; border-image: var(--hazard) 4;
+  font-family: "Arial Black", "Arial Bold", Arial, sans-serif; overflow: hidden;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, .35);
+  animation: junk-nag 9s ease-in-out infinite;
+}
+@keyframes junk-nag { 0%, 88%, 100% { transform: none; } 90% { transform: rotate(-1deg) scale(1.01); } 92% { transform: rotate(1deg) scale(1.01); } 94% { transform: rotate(-.6deg); } }
+.junk-ad.shake { animation: junk-shake 400ms linear; }
+@keyframes junk-shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+.junk-label { position: absolute; top: 0; left: 0; z-index: 3; font: 700 9px/1 Arial, sans-serif; letter-spacing: .08em; background: #111; color: #FFE600; padding: 3px 6px; }
+.junk-x {
+  position: absolute; top: 2px; right: 2px; z-index: 4; width: 18px; height: 18px; min-height: 0 !important; padding: 0;
+  border-radius: 0; border: 1px solid #999; background: #eee; color: #777; font: 12px/1 Arial, sans-serif;
+}
+.junk-art { position: relative; overflow: hidden; background: #000; }
+.junk-art svg { display: block; width: 100%; height: 100%; filter: saturate(1.75) contrast(1.18) blur(.25px); }
+.junk-art::after {   /* granulație de JPEG retrimis de 40 de ori pe WhatsApp */
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .22; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.junk-burst {
+  position: absolute; right: 8px; top: 8px; z-index: 2; width: 74px; aspect-ratio: 1; display: grid; place-items: center;
+  background: #FF1744; color: #fff; text-align: center;
+  clip-path: polygon(50% 0, 61% 18%, 82% 10%, 80% 32%, 100% 40%, 84% 56%, 96% 76%, 74% 76%, 68% 98%, 50% 84%, 32% 98%, 26% 76%, 4% 76%, 16% 56%, 0 40%, 20% 32%, 18% 10%, 39% 18%);
+  animation: junk-burst 1.6s ease-in-out infinite;
+}
+.junk-burst b { font-size: 15px; transform: rotate(-12deg); text-shadow: 1px 1px 0 #000; }
+@keyframes junk-burst { 50% { transform: scale(1.12) rotate(8deg); } }
+.junk-copy { padding: 14px 16px 12px; display: grid; gap: 6px; align-content: start; }
+.junk-adv { font: 700 11px/1.2 Arial, sans-serif; text-transform: uppercase; letter-spacing: .06em; opacity: .75; }
+.junk-head { font-size: 1.125rem; line-height: 1.15; text-transform: uppercase; letter-spacing: -.01em; }
+.junk-body { font: 400 .875rem/1.4 Arial, sans-serif; opacity: .85; }
+.junk-price { display: flex; align-items: baseline; gap: 10px; }
+.junk-old { font: 400 .875rem Arial, sans-serif; opacity: .6; }
+.junk-new { font-size: 1.75rem; color: #FFE600; -webkit-text-stroke: 1px #111; text-shadow: 3px 3px 0 #FF1744; }
+.junk-timer { font: 700 .8125rem/1 "Courier New", monospace; color: #FF1744; background: rgba(255, 255, 255, .85); padding: 4px 6px; justify-self: start; animation: junk-blink 1s steps(1) infinite; }
+@keyframes junk-blink { 50% { opacity: .35; } }
+.junk-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+.junk-cta {
+  font-family: inherit; font-size: .9375rem; text-transform: uppercase; padding: 10px 18px; border-radius: 4px;
+  background: linear-gradient(180deg, #FFEA00, #FFB300); color: #111; border: 2px solid #111; box-shadow: 3px 3px 0 #111;
+  animation: junk-wiggle 3s ease-in-out infinite;
+}
+@keyframes junk-wiggle { 0%, 80%, 100% { transform: none; } 84% { transform: rotate(-4deg) scale(1.06); } 88% { transform: rotate(4deg) scale(1.06); } 92% { transform: rotate(-2deg); } }
+.junk-remove { min-height: 0 !important; padding: 0; border: 0; background: none; font: 400 10px Arial, sans-serif; color: inherit; opacity: .45; text-decoration: underline; }
+.junk-ticker { grid-column: 1 / -1; background: #111; color: #FFE600; overflow: hidden; white-space: nowrap; font: 700 12px/26px Arial, sans-serif; letter-spacing: .04em; }
+.junk-ticker span { display: inline-block; padding-left: 100%; animation: junk-marquee 22s linear infinite; }
+@keyframes junk-marquee { to { transform: translateX(-100%); } }
+
+/* banner: lipit sub bara de sus, nu poate fi închis */
+.ad-slot { position: sticky; top: 74px; z-index: 90; max-width: 1280px; margin: 20px auto 0; padding: 0 clamp(16px, 4vw, 48px); }
+.ad-slot + .layout { padding-top: clamp(20px, 3vw, 32px); }
+.junk-ad.banner { grid-template-columns: 132px 1fr; }
+.junk-ad.banner .junk-art { aspect-ratio: auto; }
+.junk-ad.banner .junk-burst { width: 54px; right: 4px; top: 4px; }
+.junk-ad.banner .junk-burst b { font-size: 11px; }
+.junk-ad.banner .junk-body, .junk-ad.banner .junk-old { display: none; }
+.junk-ad.banner .junk-copy { grid-template-columns: 1fr auto; column-gap: 16px; padding: 10px 28px 10px 14px; }
+.junk-ad.banner .junk-adv, .junk-ad.banner .junk-head { grid-column: 1; }
+.junk-ad.banner .junk-price { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+.junk-ad.banner .junk-timer, .junk-ad.banner .junk-row { grid-column: 1 / -1; }
+.junk-ad.banner .junk-head { font-size: 1rem; }
+.junk-ad.banner .junk-new { font-size: 1.375rem; }
+.junk-ad.banner .junk-row { margin: 0; }
+.junk-ad.banner .junk-timer { display: none; }
+
+/* cardul din listă */
+.ad-feed { padding: 0 !important; background: none !important; box-shadow: none !important; border: 0 !important; backdrop-filter: none !important; }
+.junk-ad.feed { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+.junk-ad.feed .junk-art { min-height: 260px; }
+.junk-ad.feed .junk-copy { padding: 22px 26px 18px; gap: 10px; align-content: center; }
+.junk-ad.feed .junk-head { font-size: clamp(1.375rem, 2.4vw, 1.875rem); }
+
+/* reclama video: întunecată, cu cadrul „ieftin” și un buton de „sari” care nu sare */
+dialog.ad-player { background: #14161A; color: #fff; grid-template-rows: auto auto auto 1fr auto; }
+.ad-player-stage { width: min(620px, calc(100% - 32px)); border-radius: 0; box-shadow: 0 30px 80px -30px #000; overflow: visible; }
+.junk-ad.video { grid-template-columns: 1fr; animation: none; }
+.junk-ad.video .junk-art { aspect-ratio: 16 / 9; }
+.ad-player.playing .junk-ad.video .junk-art svg { animation: ken-burns var(--ad-dur, 5s) ease-out both; }
+.junk-ad.video .junk-remove { display: none; }
+.junk-ad.video .junk-copy { padding: 16px 18px; }
+.junk-ad.video .junk-head { font-size: clamp(1.25rem, 4vw, 1.75rem); }
+.ad-player.playing .junk-ad.video .junk-head { animation: rise 500ms var(--ease) 300ms both; }
+.ad-player-count { background: rgba(255, 255, 255, .12); color: #fff; }
+.ad-skip { min-width: 190px; border-radius: 0; font-family: Arial, sans-serif; background: rgba(0, 0, 0, .6); color: #fff; border: 1px solid rgba(255, 255, 255, .5); }
+.ad-skip.locked { color: rgba(255, 255, 255, .55); border-color: rgba(255, 255, 255, .2); cursor: not-allowed; }
+.ad-skip.nope { animation: junk-shake 400ms linear; }
+.ad-player .ad-tag { background: #FFE600; color: #111; border-radius: 0; }
+
 /* =========================== Telefon =========================== */
 html { -webkit-tap-highlight-color: transparent; scroll-padding-top: 84px; }
-.tabbar, .account-row { display: none; }
+.tabbar { display: none; }
 .hero-actions:empty { display: none; }
 
 @media (max-width: 640px) {
@@ -473,7 +636,7 @@ html { -webkit-tap-highlight-color: transparent; scroll-padding-top: 84px; }
   .layout { gap: 14px; padding: 14px 12px calc(96px + env(safe-area-inset-bottom)); }
   .card { padding: 20px 18px; scroll-margin-top: 72px; }
   .hero { order: 1; } .today { order: 2; } .events-card { order: 3; }
-  .agent-card { order: 4; } .board { order: 5; } .settings { order: 6; }
+  .agent-card { order: 4; } .board { order: 5; }
   h2 { font-size: 1.125rem; margin-bottom: 14px; }
 
   /* sticla: alături de număr, nu deasupra lui */
@@ -521,9 +684,6 @@ html { -webkit-tap-highlight-color: transparent; scroll-padding-top: 84px; }
   .cal-step button { flex: 0 0 150px; }
   .row-end { justify-content: stretch; }
   .row-end button { flex: 1; }
-  .account-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 18px; }
-  .account-row[hidden] { display: none; }
-  .account-row .muted { flex-basis: 100%; overflow: hidden; text-overflow: ellipsis; }
 
   /* bara de secțiuni, în zona degetului mare */
   .tabbar {
@@ -534,13 +694,14 @@ html { -webkit-tap-highlight-color: transparent; scroll-padding-top: 84px; }
     backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
     border: 1px solid rgba(255, 255, 255, .8); box-shadow: 0 10px 30px -12px rgba(38, 50, 64, .3);
   }
-  .tabbar a {
+  .tabbar a, .tabbar .tab-btn {
     display: grid; justify-items: center; gap: 2px; padding: 8px 2px; min-height: 52px; border-radius: 16px;
     color: var(--muted); text-decoration: none; font-size: .6875rem; font-weight: 500;
     transition: background-color 200ms var(--ease), color 200ms var(--ease);
   }
+  .tabbar .tab-btn { border: 0; background: none; font-family: inherit; box-shadow: none; }
   .tabbar a[aria-current] { color: var(--blue-ink); background: var(--blue); }
-  .tabbar a:active { transform: scale(.96); }
+  .tabbar a:active, .tabbar .tab-btn:active { transform: scale(.96); }
   body[data-auth="out"] .tabbar { display: none; }
 
   /* dialogurile devin foi care urcă de jos */
@@ -554,15 +715,36 @@ html { -webkit-tap-highlight-color: transparent; scroll-padding-top: 84px; }
   .sheet-head::before { content: ''; position: absolute; top: 8px; left: 50%; width: 40px; height: 4px; border-radius: 2px; background: #D3DBE5; transform: translateX(-50%); }
   .tier { padding: 20px; }
 
-  .toast { bottom: calc(90px + env(safe-area-inset-bottom)); }
+  .toast { bottom: calc(90px + env(safe-area-inset-bottom)); z-index: 500; }
+
+  /* reclama ancorată jos, deasupra barei de secțiuni */
+  .ad-slot { position: fixed; top: auto; left: 10px; right: 10px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 95; }
+  body:has(#adBanner:not([hidden])) .layout { padding-bottom: calc(200px + env(safe-area-inset-bottom)); }
+  .junk-ad.banner { grid-template-columns: 84px 1fr; border-width: 3px; box-shadow: 0 -6px 20px rgba(0, 0, 0, .25); }
+  .junk-ad.banner .junk-burst { display: none; }
+  .ad-slot { margin: 0; padding: 0; max-width: none; }
+  .junk-ad.banner .junk-copy { padding: 6px 24px 6px 10px; gap: 2px; grid-template-columns: 1fr; }
+  .junk-ad.banner .junk-price { grid-column: 1; grid-row: auto; }
+  .junk-ad.banner .junk-row { flex-wrap: nowrap; }
+  .junk-ad.banner .junk-cta { white-space: nowrap; }
+  .junk-ad.banner .junk-remove { white-space: nowrap; }
+  .junk-ad.banner .junk-adv { display: none; }
+  .junk-ad.banner .junk-head { font-size: .8125rem; }
+  .junk-ad.banner .junk-new { font-size: 1.125rem; }
+  .junk-ad.banner .junk-cta { padding: 4px 10px; font-size: .75rem; min-height: 30px; }
+  .junk-ad.banner .junk-ticker { font-size: 10px; line-height: 18px; }
+  .ad-feed { order: 3; }
+  .junk-ad.feed { grid-template-columns: 1fr; }
+  .junk-ad.feed .junk-art { min-height: 0; aspect-ratio: 16 / 10; }
+  .junk-ad.feed .junk-copy { padding: 16px; }
 
   /* performanță: blur pe fiecare card costă mult pe GPU-urile de telefon */
   .card { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(247, 249, 252, .92); }
   .blob { filter: blur(60px); animation: none; }
 }
 
+@media (max-width: 440px) { .brand-name { display: none; } }
 @media (max-width: 380px) {
-  .brand-name { display: none; }
   .hero { grid-template-columns: minmax(0, 40%) 1fr; gap: 12px; }
   .readout .big small { font-size: 1rem; }
 }
@@ -627,3 +809,27 @@ body:not([data-auth]) .layout { visibility: hidden; }   /* până știm dacă e�
 .agent-lock p { margin: 0; max-width: 60ch; line-height: 1.55; }
 .lock-mark { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(160deg, #F4E7C5, var(--base)); box-shadow: var(--raise-sm); color: #8A6A24; }
 @media (max-width: 680px) { .agent-lock { grid-template-columns: 1fr; text-align: center; justify-items: center; } }
+
+/* =========================== Fereastra de setări =========================== */
+@media (min-width: 641px) { dialog.settings-sheet { width: min(640px, calc(100% - 32px)); } }
+.set-group + .set-group { margin-top: 24px; }
+.set-group h3 { margin: 0 0 10px; font-size: .875rem; font-weight: 600; color: var(--muted); }
+.set-panel { padding: 18px; border-radius: 20px; background: var(--base); box-shadow: var(--inset-sm); }
+.set-panel.fields { margin: 0; }
+.set-panel.row-end { margin: 0; justify-content: flex-start; }
+.account-panel { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.account-email { font-weight: 500; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.account-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cal-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.cal-steps li { display: grid; grid-template-columns: 28px 1fr auto 64px; align-items: center; gap: 12px; }
+.step-n { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--blue); color: var(--blue-ink); font-size: .8125rem; font-weight: 600; }
+.step-text { font-size: .9375rem; line-height: 1.45; }
+.cal-val { text-align: right; color: var(--muted); }
+.cal-live { margin: 14px 0 0 !important; }
+@media (max-width: 640px) {
+  .cal-steps li { grid-template-columns: 28px 1fr auto; }
+  .cal-steps .cal-val { grid-column: 2 / -1; text-align: left; font-size: .8125rem; margin-top: -6px; }
+  .cal-steps .cal-val::before { content: 'valoare salvată: '; font-family: var(--sans); }
+  .set-panel { padding: 14px; }
+  .set-panel.row-end button { flex: 1; }
+}

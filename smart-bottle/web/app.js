@@ -4,6 +4,7 @@ import {
 } from './logic.js';
 import { displayMl } from './agent.js';
 import { authGate } from './auth.js';
+import { playUnskippable } from './ads.js';
 import { initMobile, keepAwake, haptic, refreshWakeLock, wakeLockSupported } from './mobile.js';
 import { initHydro, onEvent, onConnectionChange, syncGoal, clearCloud, icon } from './hydro.js';
 
@@ -473,6 +474,7 @@ function renderReadout() {
   const st = state.raw === null ? 'idle' : state.absent ? 'absent' : state.stable ? 'stable' : 'moving';
   $('stableNow').dataset.state = st;
   $('stableNow').textContent = { idle: 'fără date', absent: 'sticla lipsește', stable: 'stabil', moving: 'se mișcă' }[st];
+  $('calLive').textContent = state.raw === null ? 'fără date' : `${state.raw} (${state.stable ? 'stabil' : 'se mișcă'})`;
 }
 
 /* =========================== Desen: grafice =========================== */
@@ -647,8 +649,10 @@ function applyCalibration() {
   if (state.connected && cfg.empty !== cfg.full) state.link.send(calibrationCommand(cfg));
 }
 
-function captureCal(which) {
+async function captureCal(which) {
   if (state.raw === null) { toast('Nicio citire încă — conectează dispozitivul'); return; }
+  await playUnskippable('calibrate');   // doar pe Free
+  if (state.raw === null) return;
   if (!state.stable) toast('Atenție: citirea nu e stabilă încă');
   cfg[which] = state.raw;
   cfg[which === 'empty' ? 'calibratedEmpty' : 'calibratedFull'] = true;
@@ -688,6 +692,10 @@ function bindSettings() {
 
   $('wakeLock').addEventListener('change', (e) => { cfg.wakeLock = e.target.checked; saveSettings(); refreshWakeLock(); });
 
+  const openSettings = () => { renderSettings(); renderReadout(); $('settingsDialog').showModal(); };
+  $('btnSettings').addEventListener('click', openSettings);
+  $('tabSettings').addEventListener('click', openSettings);
+
   $('btnEmpty').addEventListener('click', () => captureCal('empty'));
   $('btnFull').addEventListener('click', () => captureCal('full'));
   $('btnDismiss').addEventListener('click', hideReminder);
@@ -704,6 +712,7 @@ function bindSettings() {
 }
 
 async function exportCsv() {
+  await playUnskippable('export');      // doar pe Free
   const [readings, events] = await Promise.all([db.since('readings', 0), db.since('events', 0)]);
   const rows = [['tip', 'data', 'ora', 'raw', 'ml']];
   for (const r of readings) rows.push(['citire', dayKey(r.ts), fmtTime(r.ts), r.raw, r.ml]);
@@ -726,6 +735,7 @@ async function toggleConnect() {
   state.link = new BleDevice();
   try {
     await state.link.connect(onLine, onState);
+    playUnskippable('connect');           // conexiunea rămâne activă în spatele reclamei
   } catch (e) {
     state.link = null;
     onState('off');
@@ -748,7 +758,9 @@ async function repairLink() {
   }
 }
 
-function startDemo() {
+async function startDemo() {
+  if (state.link) return;
+  await playUnskippable('demo');
   if (state.link) return;
   if (!cfg.calibrated) {
     cfg.empty = DemoDevice.RAW_EMPTY; cfg.full = DemoDevice.RAW_FULL;

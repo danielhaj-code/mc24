@@ -10,7 +10,7 @@ const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)');
 function placeActions() {
   const actions = [$('btnDemo'), $('btnConnect')];
   if (PHONE.matches) $('heroActions').append(...actions);
-  else $('btnAdmin').before(...actions);
+  else $('btnSettings').before(...actions);
 }
 
 /* =========================== Bara de secțiuni =========================== */

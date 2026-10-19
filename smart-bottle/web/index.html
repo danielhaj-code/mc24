@@ -42,6 +42,7 @@
       <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></symbol>
       <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol>
       <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
       <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
     </defs>
   </svg>
@@ -60,11 +61,8 @@
         <svg class="i" aria-hidden="true"><use href="#i-play"/></svg><span>Demo</span>
       </button>
       <button id="btnConnect" class="primary">Conectează</button>
-      <button id="btnAdmin" class="ghost icon-btn" title="Cine are acces" aria-label="Administrare acces" hidden>
-        <svg class="i" aria-hidden="true"><use href="#i-users"/></svg>
-      </button>
-      <button id="btnSignOut" class="ghost icon-btn" aria-label="Ieși din cont" hidden>
-        <svg class="i" aria-hidden="true"><use href="#i-log-out"/></svg>
+      <button id="btnSettings" class="ghost icon-btn" aria-label="Setări și calibrare" title="Setări și calibrare">
+        <svg class="i" aria-hidden="true"><use href="#i-settings"/></svg>
       </button>
     </div>
   </header>
@@ -120,11 +118,6 @@
       <span>Bluetooth-ul web merge doar în Chrome sau Edge, pe Windows și Android. Demo-ul merge oriunde.</span>
       <button id="btnUnsupportedClose" class="ghost icon-btn small" aria-label="Ascunde"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
     </div>
-    <div id="adBanner" class="banner ad" hidden>
-      <span class="ad-tag">Reclamă</span>
-      <span id="adText" class="ad-text"></span>
-      <button id="btnNoAds" class="ghost small">Elimină reclamele</button>
-    </div>
     <div id="linkLost" class="banner alert" hidden>
       <svg class="i" aria-hidden="true"><use href="#i-bluetooth"/></svg>
       <span>Legătura cu sticla s-a pierdut și nu s-a refăcut singură. Verifică dacă ESP32 e alimentat și aproape, apoi reconectează.</span>
@@ -141,6 +134,8 @@
       <button id="btnDismiss" class="ghost small">Am înțeles</button>
     </div>
   </div>
+
+  <div id="adBanner" class="ad-slot" aria-label="Reclamă" hidden></div>
 
   <main class="layout">
     <section class="card hero" id="secBottle" style="--i:0">
@@ -208,6 +203,8 @@
       </div>
     </section>
 
+    <section class="card ad-feed" id="adFeed" aria-label="Reclamă" hidden></section>
+
     <section class="card agent-card" id="agentCard" style="--i:2">
       <div class="card-head">
         <h2><span class="agent-mark"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg></span>HydroGPT™</h2>
@@ -263,38 +260,6 @@
       <ul id="events" class="events"></ul>
     </section>
 
-    <section class="card settings" id="secSettings" style="--i:5">
-      <h2>Calibrare și setări</h2>
-      <div class="account-row" id="accountRow" hidden>
-        <span class="muted small" id="accountEmail"></span>
-        <button id="btnAdmin2" class="ghost small" hidden><svg class="i" aria-hidden="true"><use href="#i-users"/></svg>Cine are acces</button>
-        <button id="btnSignOut2" class="ghost small"><svg class="i" aria-hidden="true"><use href="#i-log-out"/></svg>Ieși din cont</button>
-      </div>
-      <div class="cal">
-        <div class="cal-step">
-          <button id="btnEmpty" class="soft">Setează gol</button>
-          <span>gol = <b id="calEmpty" class="mono">–</b></span>
-        </div>
-        <div class="cal-step">
-          <button id="btnFull" class="soft">Setează plin</button>
-          <span>plin = <b id="calFull" class="mono">–</b></span>
-        </div>
-      </div>
-      <p class="muted small">Pune sticla goală pe senzor și așteaptă „stabil”, apoi apasă Setează gol. Umple-o și apasă Setează plin.</p>
-      <div class="fields">
-        <label>Formă recipient<select id="shape"></select></label>
-        <label>Capacitate (mL)<input id="capacity" type="number" min="50" max="5000" step="10"></label>
-        <label>Obiectiv zilnic (mL)<input id="goal" type="number" min="250" max="6000" step="50"></label>
-        <label>Prag înghițitură (mL)<input id="drinkMin" type="number" min="10" max="300" step="5"></label>
-        <label>Memento după (ore fără apă)<input id="remindHours" type="number" min="0.5" max="12" step="0.5"></label>
-        <label class="check"><input id="notify" type="checkbox"><span>Notificări de sistem cât e pagina deschisă</span></label>
-        <label class="check" id="wakeLockRow"><input id="wakeLock" type="checkbox"><span>Ține ecranul aprins cât e conectată sticla (altfel telefonul oprește Bluetooth-ul în repaus)</span></label>
-      </div>
-      <div class="row-end">
-        <button id="btnExport" class="ghost small"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Exportă CSV</button>
-        <button id="btnClear" class="ghost small danger"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg>Șterge istoricul</button>
-      </div>
-    </section>
   </main>
 
   <nav class="tabbar" id="tabbar" aria-label="Secțiuni">
@@ -302,8 +267,66 @@
     <a href="#secToday" data-tab="secToday"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg><span>Azi</span></a>
     <a href="#agentCard" data-tab="agentCard"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span>Agent</span></a>
     <a href="#secBoard" data-tab="secBoard"><svg class="i" aria-hidden="true"><use href="#i-trophy"/></svg><span>Top</span></a>
-    <a href="#secSettings" data-tab="secSettings"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span>Setări</span></a>
+    <button type="button" id="tabSettings" class="tab-btn"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span>Setări</span></button>
   </nav>
+
+  <dialog id="settingsDialog" class="sheet settings-sheet" aria-labelledby="settingsTitle">
+    <form method="dialog" class="sheet-head">
+      <h2 id="settingsTitle">Setări</h2>
+      <button class="ghost icon-btn small" aria-label="Închide"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </form>
+
+    <section class="set-group" id="accountRow" hidden>
+      <h3>Cont</h3>
+      <div class="set-panel account-panel">
+        <span class="account-email" id="accountEmail"></span>
+        <div class="account-actions">
+          <button id="btnAdmin" class="ghost small" hidden><svg class="i" aria-hidden="true"><use href="#i-users"/></svg>Cine are acces</button>
+          <button id="btnSignOut" class="ghost small" hidden><svg class="i" aria-hidden="true"><use href="#i-log-out"/></svg>Ieși din cont</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="set-group">
+      <h3>Calibrare</h3>
+      <div class="set-panel">
+        <ol class="cal-steps">
+          <li><span class="step-n">1</span><span class="step-text">Pune sticla goală pe senzor și așteaptă „stabil”.</span>
+            <button id="btnEmpty" class="soft small">Setează gol</button><b id="calEmpty" class="mono cal-val">–</b></li>
+          <li><span class="step-n">2</span><span class="step-text">Umple sticla, pune-o la loc și așteaptă din nou.</span>
+            <button id="btnFull" class="soft small">Setează plin</button><b id="calFull" class="mono cal-val">–</b></li>
+        </ol>
+        <p class="muted small cal-live">Citirea de acum: <b id="calLive" class="mono">–</b></p>
+      </div>
+    </section>
+
+    <section class="set-group">
+      <h3>Sticla și obiectivul</h3>
+      <div class="set-panel fields">
+        <label>Formă recipient<select id="shape"></select></label>
+        <label>Capacitate (mL)<input id="capacity" type="number" min="50" max="5000" step="10" inputmode="numeric"></label>
+        <label>Obiectiv zilnic (mL)<input id="goal" type="number" min="250" max="6000" step="50" inputmode="numeric"></label>
+        <label>Prag înghițitură (mL)<input id="drinkMin" type="number" min="10" max="300" step="5" inputmode="numeric"></label>
+      </div>
+    </section>
+
+    <section class="set-group">
+      <h3>Mementouri</h3>
+      <div class="set-panel fields">
+        <label>Memento după (ore fără apă)<input id="remindHours" type="number" min="0.5" max="12" step="0.5" inputmode="decimal"></label>
+        <label class="check"><input id="notify" type="checkbox"><span>Notificări de sistem cât e pagina deschisă</span></label>
+        <label class="check" id="wakeLockRow"><input id="wakeLock" type="checkbox"><span>Ține ecranul aprins cât e conectată sticla (altfel telefonul oprește Bluetooth-ul în repaus)</span></label>
+      </div>
+    </section>
+
+    <section class="set-group">
+      <h3>Date</h3>
+      <div class="set-panel row-end">
+        <button id="btnExport" class="ghost small"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Exportă CSV</button>
+        <button id="btnClear" class="ghost small danger"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg>Șterge istoricul</button>
+      </div>
+    </section>
+  </dialog>
 
   <dialog id="tiersDialog" class="sheet">
     <form method="dialog" class="sheet-head">
@@ -337,6 +360,22 @@
     <p id="adminError" class="auth-error" role="alert" hidden></p>
     <p class="muted small">Persoana intră cu contul Google care are exact această adresă. Dacă o scoți de pe listă, nu mai poate intra și nu-și mai vede datele.</p>
     <ul id="adminList" class="admin-list"></ul>
+  </dialog>
+
+  <dialog id="adPlayer" class="ad-player" aria-label="Reclamă">
+    <div class="ad-player-bar"><span class="ad-player-progress"></span></div>
+    <div class="ad-player-top">
+      <span class="ad-tag">Reclamă</span>
+      <span id="adPlayerAdv" class="ad-player-adv"></span>
+      <span class="ad-player-mute" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg></span>
+    </div>
+    <p id="adPlayerReason" class="ad-player-reason"></p>
+    <div id="adPlayerStage" class="ad-player-stage"></div>
+    <div class="ad-player-foot">
+      <span id="adPlayerCount" class="ad-player-count"></span>
+      <button id="adPlayerDone" class="ad-skip locked" type="button">Sari peste reclamă</button>
+    </div>
+    <div class="bubbles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

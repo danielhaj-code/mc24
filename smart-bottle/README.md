@@ -124,6 +124,13 @@ accente pastel albastru `#C8E0F4` și roz `#F5E0E8`, colțuri 14 / 28 / 42 px, i
 Fundalul are trei pete de lumină difuză care își schimbă culoarea după abonament (aurii pe Ultra,
 gri-albăstrui pe Enterprise).
 
+## Pe telefon
+
+Bară de secțiuni jos (Sticla, Azi, Agent, Top, Setări), butoanele de conectare lângă sticlă, setările și
+calibrarea într-o foaie care urcă de jos (pe desktop, rotița din bara de sus). Cât e conectată sticla,
+ecranul rămâne aprins (opțiune în setări), pentru că fără activitate în fundal telefonul ar opri Bluetooth-ul.
+Aplicația se poate instala din Chrome (iconițe PNG incluse).
+
 ## Legătura Bluetooth: heartbeat și reconectare
 
 Aplicația și ESP32 își verifică reciproc legătura (detalii în [PROTOCOL.md](PROTOCOL.md#heartbeat)):
@@ -156,6 +163,13 @@ poate programa mementouri. Dacă AI-ul din cloud nu răspunde, răspunde agentul
 | Memento | simplu, după câteva ore | simplu | agentul, la 10 min | agentul, la 5 min |
 
 Plata e 100% fictivă: niciun câmp de card, `checkout()` din baza de date emite o factură cu reducere 100%.
+
+**Reclamele de pe Free** sunt inventate (advertiseri fictivi, ilustrații desenate în `web/ads.js`) și arată
+intenționat ieftin: bandă de avertizare, preț tăiat, cronometru de ofertă care se resetează, un X fals care
+nu închide nimic și text care curge. Un banner stă lipit sus (pe telefon, jos), iar un card sponsorizat stă
+între carduri. Reclamele video de 5 s nu se pot sări (butonul „Sari” adaugă câte o secundă de penalizare)
+și apar la Demo, după conectare, la calibrare și la export (cel mult una pe minut). „Elimină reclamele”
+pornește, evident, cu o reclamă de 3 s.
 
 ## Cloud (Supabase)
 
