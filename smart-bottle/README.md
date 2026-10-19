@@ -158,7 +158,8 @@ poate programa mementouri. Dacă AI-ul din cloud nu răspunde, răspunde agentul
 | Preț | 0 lei | 9,99 lei | 49,99 lei | Contactează vânzările |
 | Afișaj | rotunjit la ±50 mL | ±10 mL | la mililitru | la mililitru |
 | HydroGPT | blocat | blocat | deblocat, cu AI în cloud | idem |
-| Personalitate | — | — | somelier de apă | consultant corporatist |
+| Personalitate | — | — | prieten relaxat, cu glume mici despre apă | coleg de birou simpatic |
+| Clasament | blocat | da | da | da |
 | Extra | reclame la apă | grafic 7 zile | votul organelor, temă aurie | raport KPI pentru board |
 | Memento | simplu, după câteva ore | simplu | agentul, la 10 min | agentul, la 5 min |
 

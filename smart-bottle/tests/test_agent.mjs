@@ -94,7 +94,7 @@ t('raționament: blocat pe Free, complet pe Ultra cu voturile', () => {
   assert.ok(reasoningTrace(ctx, d, 'free').some((s) => s.includes('disponibil în Ultra')));
   const ultra = reasoningTrace(ctx, d, 'ultra');
   assert.ok(ultra.some((s) => s.includes('Rinichiul')));
-  assert.ok(reasoningTrace(ctx, d, 'enterprise').some((s) => s.includes('Guvernanță')));
+  assert.ok(reasoningTrace(ctx, d, 'enterprise').some((s) => s.includes('ședința')));
 });
 
 t('reacții la evenimente', () => {

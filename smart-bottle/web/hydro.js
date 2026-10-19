@@ -218,6 +218,7 @@ function applyTier() {
   }
   app.onTierChange();
   refreshHabits();
+  refreshBoard();
 }
 
 function renderTiers() {
@@ -274,8 +275,33 @@ async function changeTier(k, btn) {
 }
 
 /* =========================== Clasament =========================== */
+// Rânduri de exemplu pentru clasamentul blocat (nu sunt oameni reali).
+const SAMPLE_BOARD = [
+  { rank: 1, nickname: 'Delfinul Curajos', tier: 'ultra', total_ml: 2140 },
+  { rank: 2, nickname: 'Cactusul Fluid', tier: 'pro', total_ml: 1820 },
+  { rank: 3, nickname: 'Ursul Polar Premium', tier: 'enterprise', total_ml: 1510 },
+  { rank: 4, nickname: 'tu?', tier: 'free', total_ml: 0 },
+];
+
+function boardRow(r) {
+  const li = document.createElement('li');
+  if (r.is_me) li.className = 'me';
+  li.innerHTML = '<span class="rank"></span><span class="who"></span><span class="tier-chip"></span><b></b>';
+  li.children[0].textContent = r.rank;
+  li.children[0].dataset.rank = r.rank;
+  li.children[1].textContent = r.nickname + (r.is_me ? ' (tu)' : '');
+  li.children[2].textContent = TIERS[r.tier]?.name ?? r.tier;
+  li.children[2].dataset.tier = r.tier;
+  li.children[3].textContent = `${r.total_ml} mL`;
+  return li;
+}
+
 export async function refreshBoard() {
   const list = $('leaderboard');
+  const open = T().leaderboard;
+  $('secBoard').classList.toggle('locked', !open);
+  $('boardLock').hidden = open;
+  if (!open) { list.replaceChildren(...SAMPLE_BOARD.map(boardRow)); return; }
   if (!cloud.ready) {
     list.replaceChildren(emptyRow('wifi-off', 'Clasamentul apare când ești online.'));
     return;
@@ -283,18 +309,7 @@ export async function refreshBoard() {
   const rows = await cloud.leaderboard();
   list.replaceChildren();
   if (!rows?.length) { list.replaceChildren(emptyRow('droplet', 'Nimeni n-a băut nimic azi. Primul pahar te pune pe locul 1.')); return; }
-  for (const r of rows) {
-    const li = document.createElement('li');
-    if (r.is_me) li.className = 'me';
-    li.innerHTML = '<span class="rank"></span><span class="who"></span><span class="tier-chip"></span><b></b>';
-    li.children[0].textContent = r.rank;
-    li.children[0].dataset.rank = r.rank;
-    li.children[1].textContent = r.nickname + (r.is_me ? ' (tu)' : '');
-    li.children[2].textContent = TIERS[r.tier]?.name ?? r.tier;
-    li.children[2].dataset.tier = r.tier;
-    li.children[3].textContent = `${r.total_ml} mL`;
-    list.append(li);
-  }
+  for (const r of rows) list.append(boardRow(r));
 }
 
 function emptyRow(name, text) {
@@ -328,6 +343,7 @@ export async function initHydro(api) {
   $('btnTier').addEventListener('click', () => { $('invoice').hidden = true; renderTiers(); $('tiersDialog').showModal(); });
   $('weekLock').addEventListener('click', () => { renderTiers(); $('tiersDialog').showModal(); });
   $('btnReport').addEventListener('click', openReport);
+  $('boardUnlock').addEventListener('click', () => { $('invoice').hidden = true; renderTiers(); $('tiersDialog').showModal(); });
   $('btnUnlockAgent').addEventListener('click', () => { $('invoice').hidden = true; renderTiers(); $('tiersDialog').showModal(); });
   $('btnAsk').addEventListener('click', () => ask('Când trebuie să beau?'));
   $('chatForm').addEventListener('submit', (e) => {

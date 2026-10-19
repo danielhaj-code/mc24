@@ -652,6 +652,16 @@ dialog.ad-player { background: #14161A; color: #fff; grid-template-rows: auto au
   .habits-charts { grid-template-columns: 1fr; }
 }
 
+.board { position: relative; }
+.board.locked .leaderboard, .board.locked > p { filter: blur(4px); opacity: .55; pointer-events: none; user-select: none; }
+.board.locked #btnBoard { visibility: hidden; }
+.board-lock {
+  position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%); z-index: 2;
+  display: grid; justify-items: center; gap: 8px; text-align: center; width: min(300px, calc(100% - 32px));
+  padding: 20px; border-radius: 22px; background: var(--surface); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: var(--raise);
+}
+.board-lock .i { color: var(--blue-deep); }
+
 /* =========================== Telefon =========================== */
 html { -webkit-tap-highlight-color: transparent; scroll-padding-top: 84px; }
 .tabbar { display: none; }

@@ -7,25 +7,25 @@ export const TIERS = {
   free: {
     name: 'Free', price: '0 lei', blurb: 'Apă, dar cu reclame.',
     nudgeMin: 60, chatPerDay: 0, ads: true, precision: 50, council: false,
-    weekChart: false, llm: false, report: false, agent: false,
-    perks: ['Afișaj rotunjit la ±50 mL', 'Reclame la apă (de la sponsorul nostru, Apa)', 'Memento simplu după câteva ore fără apă', 'Fără HydroGPT'],
+    weekChart: false, llm: false, report: false, agent: false, leaderboard: false,
+    perks: ['Afișaj rotunjit la ±50 mL', 'Reclame la apă (de la sponsorul nostru, Apa)', 'Memento simplu după câteva ore fără apă', 'Fără clasament și fără HydroGPT'],
   },
   pro: {
     name: 'Pro', price: '9,99 lei / lună', blurb: 'Pentru cei care beau serios.',
     nudgeMin: 20, chatPerDay: 0, ads: false, precision: 10, council: false,
-    weekChart: true, llm: false, report: false, agent: false,
-    perks: ['Precizie ±10 mL', 'Graficul pe 7 zile deblocat', 'Fără reclame', 'Fără HydroGPT (vine cu Ultra)'],
+    weekChart: true, llm: false, report: false, agent: false, leaderboard: true,
+    perks: ['Precizie ±10 mL', 'Clasamentul zilei', 'Graficul pe 7 zile deblocat', 'Fără reclame', 'Fără HydroGPT (vine cu Ultra)'],
   },
   ultra: {
     name: 'Ultra', price: '49,99 lei / lună', blurb: 'Somelier de apă personal.',
     nudgeMin: 10, chatPerDay: Infinity, ads: false, precision: 1, council: true,
-    weekChart: true, llm: true, report: false, agent: true,
+    weekChart: true, llm: true, report: false, agent: true, leaderboard: true,
     perks: ['HydroGPT: agentul AI care îți spune când să bei', 'Precizie la mililitru', 'Consiliul Organelor: vezi cum votează rinichii', 'AI adevărat (Gemini) care îți citește sticla și istoricul', 'Temă aurie', 'Memento la 10 min'],
   },
   enterprise: {
     name: 'Enterprise', price: 'Contactează vânzările', blurb: 'Hidratare la scară, cu guvernanță.',
     nudgeMin: 5, chatPerDay: Infinity, ads: false, precision: 1, council: true,
-    weekChart: true, llm: true, report: true, agent: true,
+    weekChart: true, llm: true, report: true, agent: true, leaderboard: true,
     perks: ['Tot din Ultra', 'Raport KPI de hidratare pentru board', 'Monitorizare în timp real (5 min)', 'Conformitate ISO H₂O:2026*', 'Account manager dedicat (tot HydroGPT)'],
   },
 };
@@ -141,18 +141,18 @@ const LINES = {
     blind: () => ['Conectează sticla și hai să facem istorie!'],
   },
   ultra: {
-    drink: (d) => [`Vă recomand ${d.amountMl} mL dintr-o recoltă de robinet 2026, cu note subtile de clor și un final lung, mineral.`, `Momentul e ideal pentru ${d.amountMl} mL. Lăsați apa să respire o secundă în pahar, apoi savurați.`],
-    wait: (d) => [`Rinichii dumneavoastră se odihnesc. Revin cu o recomandare în ${d.waitMin} minute.`, `Răbdare. O apă bună se bea la momentul potrivit: peste ${d.waitMin} min.`],
-    refill: () => ['Sticla și-a încheiat serviciul. Vă rog, o nouă turnare, din aceeași sursă distinsă.'],
-    missing: () => ['Sticla a părăsit masa. Sper că nu a plecat la concurență.'],
-    blind: () => ['Fără conexiune nu pot degusta datele. Vă rog, conectați sticla.'],
+    drink: (d) => [`Hai, ia o gură bună de apă: vreo ${d.amountMl} ml și ești pe drumul cel bun.`, `E momentul pentru un pahar, cam ${d.amountMl} ml. Îți mulțumești singur mai târziu.`],
+    wait: (d) => [`Stai liniștit, ești bine. Îți zic eu peste vreo ${d.waitMin} minute.`, `Totul ok deocamdată. Mai vorbim în ${d.waitMin} minute.`],
+    refill: () => ['Sticla e aproape goală. O umplem?'],
+    missing: () => ['Unde a dispărut sticla? Pune-o la loc când ai un minut.'],
+    blind: () => ['Nu văd sticla acum. Conectează-o și ne vedem acolo.'],
   },
   enterprise: {
-    drink: (d) => [`Per sync-ul de azi, propun să aliniem un deliverable de ${d.amountMl} mL în sprint-ul curent. Action item: tu. Deadline: EOD, adică acum.`, `Hidratarea e un KPI critic pentru Q4. Recomand execuția imediată a unui sip de ${d.amountMl} mL, în linie cu OKR-urile.`],
-    wait: (d) => [`Pipeline-ul de hidratare e on track. Reluăm discuția într-un follow-up peste ${d.waitMin} min.`, `Nu e nevoie de action item acum. Am pus un placeholder în calendar peste ${d.waitMin} min.`],
-    refill: () => ['Avem un risc de capacitate în rezervorul principal. Recomand un refill pentru a asigura business continuity.'],
-    missing: () => ['Asset-ul principal (sticla) nu mai e în scope. Am deschis un ticket P1.'],
-    blind: () => ['Nu avem vizibilitate asupra datelor. Recomand reconectarea ca prioritate strategică.'],
+    drink: (d) => [`Pauză scurtă de apă? Vreo ${d.amountMl} ml și te întorci la treabă ca nou.`, `Hai la un pahar, cam ${d.amountMl} ml. Mailurile mai pot aștepta un minut.`],
+    wait: (d) => [`Ești bine deocamdată. Revin peste vreo ${d.waitMin} minute.`, `Nimic de făcut acum. Ne auzim în ${d.waitMin} minute.`],
+    refill: () => ['Sticla e pe terminate. Un drum scurt până la apă și gata.'],
+    missing: () => ['Nu mai văd sticla. Ai luat-o la ședință?'],
+    blind: () => ['Nu văd sticla acum. Conecteaz-o și mă ocup eu de rest.'],
   },
 };
 
@@ -165,18 +165,18 @@ export function speak(decision, tier, rng = Math.random) {
 // Pași de „gândire” afișați înaintea răspunsului. Folosesc cifrele reale.
 export function reasoningTrace(ctx, decision, tier) {
   if (!TIERS[tier]?.council) {
-    return ['Analizez...', 'Raționamentul complet e disponibil în Ultra.'];
+    return ['Mă gândesc...', 'Raționamentul complet e disponibil în Ultra.'];
   }
-  if (!ctx.sensing) return ['Caut sticla prin Bluetooth...', 'Nicio sticlă. Nicio dată. Nicio speranță.'];
+  if (!ctx.sensing) return ['Caut sticla...', 'Nu o găsesc acum, așa că mă uit doar la ce știu deja.'];
   const steps = [
-    `Interoghez senzorul: ${ctx.bottleMl ?? '?'} mL în sticlă (${ctx.bottlePct ?? '?'}%).`,
-    `Ai băut azi ${ctx.todayMl} mL din ${ctx.goal} mL (${ctx.goalPct}%).`,
-    `Curba ideală cere ${ctx.expected} mL până acum: ${ctx.deficit > 0 ? `deficit ${ctx.deficit} mL` : `surplus ${-ctx.deficit} mL`}.`,
-    ctx.minutesSinceDrink === null ? 'Ultima înghițitură: niciuna. Îngrijorător.' : `Ultima înghițitură: acum ${ctx.minutesSinceDrink} min.`,
-    'Convoc Consiliul Organelor...',
+    `Mă uit în sticlă: cam ${ctx.bottleMl ?? '?'} ml.`,
+    `Azi ai băut ${ctx.todayMl} ml din ${ctx.goal}.`,
+    ctx.deficit > 0 ? `Până acum ar fi fost bine pe la ${ctx.expected} ml, deci mai ai de recuperat vreo ${ctx.deficit}.` : 'Ești înaintea planului, super.',
+    ctx.minutesSinceDrink === null ? 'Încă n-ai băut nimic azi.' : `Ultima gură de apă: acum ${ctx.minutesSinceDrink} min.`,
+    'Întreb și organele ce zic...',
   ];
   for (const v of decision.votes) steps.push(`${v.organ} votează „${v.vote}”: ${v.reason}`);
-  if (tier === 'enterprise') steps.push('Escaladez decizia către Comitetul de Guvernanță Hidrică... aprobat.');
+  if (tier === 'enterprise') steps.push('Am trecut-o și prin ședința de dimineață. Toată lumea e de acord.');
   return steps;
 }
 
@@ -186,16 +186,16 @@ export function reactToEvent(ev, tier, ctx, rng = Math.random) {
     return pick({
       free: [`+${ev.ml} mL în sticlă. Upgrade-ul e tot gol.`],
       pro: [`Rezervor plin! +${ev.ml} mL de energie pură!`],
-      ultra: [`O nouă turnare: ${ev.ml} mL. Excelentă alegere.`],
-      enterprise: [`Capacitatea a fost restaurată (+${ev.ml} mL). Risc închis.`],
+      ultra: [`Sticlă plină din nou (+${ev.ml} ml). Perfect.`],
+      enterprise: [`Gata, sticla e plină la loc (+${ev.ml} ml).`],
     }[tier] || [''], rng);
   }
   const done = ctx.todayMl >= ctx.goal;
   const lines = {
     free: [`Ai băut ${ev.ml} mL. Pe Pro am fi aplaudat.`],
     pro: [done ? `OBIECTIV ATINS! ${ctx.todayMl} mL! LEGENDĂ!` : `BOOM! ${ev.ml} mL! Încă ${ctx.goal - ctx.todayMl} mL până la glorie!`],
-    ultra: [done ? `Obiectivul zilei, onorat. ${ctx.todayMl} mL. Rinichii dumneavoastră vă salută.` : `${ev.ml} mL, băuți cu eleganță. Rinichii dumneavoastră vă transmit salutări.`],
-    enterprise: [done ? `Target-ul zilnic a fost livrat (${ctx.goalPct}%). Felicitări întregii echipe (tu).` : `Sip de ${ev.ml} mL înregistrat. Progres: ${ctx.goalPct}% din target. Keep the momentum.`],
+    ultra: [done ? `Ai atins obiectivul de azi! ${ctx.todayMl} ml, bravo.` : `Frumos, ${ev.ml} ml. Mai ai vreo ${Math.max(0, ctx.goal - ctx.todayMl)} ml până la obiectiv.`],
+    enterprise: [done ? `Obiectivul de azi e bifat. Bravo, meriți o pauză de cafea (cu un pahar de apă alături).` : `Bun, ${ev.ml} ml. Ești la ${ctx.goalPct}% din obiectivul de azi.`],
   };
   return pick(lines[tier] || lines.free, rng);
 }
@@ -236,8 +236,8 @@ export function localReply(question, ctx, tier, rng = Math.random) {
     return {
       free: 'Motivație? Pe Free ai doar apă. Bea-o.',
       pro: 'Corpul tău e 60% apă. Restul de 40% e voință. ACUM BEA!',
-      ultra: 'Gândiți-vă la apă ca la un vin care nu vă dă dureri de cap.',
-      enterprise: 'Hidratarea ta are impact direct asupra stakeholderilor (tu, mâine dimineață).',
+      ultra: 'Gândește-te la apă ca la cafeaua care nu te ține treaz noaptea. Un pahar acum?',
+      enterprise: 'Un pahar de apă acum, iar tu de mâine dimineață o să-ți mulțumească.',
     }[tier];
   }
   if (has(q, 'cand', 'trebuie', 'sa beau', 'beau', 'acum', 'sete', 'cat sa')) {

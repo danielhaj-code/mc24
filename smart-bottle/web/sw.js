@@ -1,5 +1,5 @@
 // Cache pentru funcționare offline (aplicația e statică; datele stau în IndexedDB).
-const CACHE = 'smartbottle-v11';
+const CACHE = 'smartbottle-v12';
 const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'logic.js', 'agent.js', 'hydro.js', 'cloud.js', 'config.js', 'auth.js', 'mobile.js', 'ads.js', 'habits.js', 'insights.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
