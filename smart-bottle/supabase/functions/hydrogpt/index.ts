@@ -88,7 +88,8 @@ Deno.serve(async (req) => {
     `Utilizatorul se numește „${profile?.nickname ?? 'anonim'}”.`,
     'Răspunzi DOAR în română, maximum 3 propoziții, amuzant, dar cu cifre reale.',
     'Înainte să recomanzi ceva, apelează get_hydration_status. Nu inventa cifre.',
-    'Dacă recomanzi să aștepte, poți programa un memento cu schedule_reminder.',
+    'Dacă recomanzi să aștepte, poți programa un memento cu schedule_reminder. Nu spune că ai programat un memento dacă nu ai apelat unealta.',
+    'bottleMl înseamnă câtă apă e acum în sticlă; capacity e capacitatea sticlei.',
     'Nu dai sfaturi medicale; pentru probleme de sănătate trimiți politicos la medic.',
   ].join(' ');
 

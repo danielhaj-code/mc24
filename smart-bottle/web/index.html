@@ -4,135 +4,211 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Smart Bottle</title>
-  <meta name="theme-color" content="#0b5cad">
+  <meta name="theme-color" content="#F2F5F9">
+  <meta name="color-scheme" content="light only">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="style.css">
   <script type="module" src="app.js"></script>
 </head>
 <body>
+  <!-- Iconițe Lucide (ISC), folosite prin <use href="#i-..."> -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-droplet" viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></symbol>
+      <symbol id="i-bean" viewBox="0 0 24 24"><path d="M10.165 6.598C9.954 7.478 9.64 8.36 9 9c-.64.64-1.521.954-2.402 1.165A6 6 0 0 0 8 22c7.732 0 14-6.268 14-14a6 6 0 0 0-11.835-1.402Z"/><path d="M5.341 10.62a4 4 0 1 0 5.279-5.28"/></symbol>
+      <symbol id="i-brain" viewBox="0 0 24 24"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+      <symbol id="i-alarm" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></symbol>
+      <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+      <symbol id="i-bluetooth" viewBox="0 0 24 24"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4.5v15a1 1 0 0 0 1.5.86l12.4-7.5a1 1 0 0 0 0-1.72L7.5 3.64A1 1 0 0 0 6 4.5z"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+      <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+      <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+      <symbol id="i-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><path d="m2 2 20 20"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="ambient" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
+
   <header class="topbar">
     <div class="brand">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v3l2 3v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V8l2-3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-      <span>Smart Bottle</span>
+      <span class="brand-mark"><svg class="i" aria-hidden="true"><use href="#i-droplet"/></svg></span>
+      <span class="brand-name">Smart Bottle</span>
       <button id="btnTier" class="tier-badge" title="Abonamentul tău">Free</button>
     </div>
     <div class="conn">
       <span id="connState" class="pill off">Deconectat</span>
-      <button id="btnDemo" class="ghost" title="Simulează un dispozitiv, fără hardware">Demo</button>
+      <button id="btnDemo" class="ghost" title="Simulează sticla, fără hardware">
+        <svg class="i" aria-hidden="true"><use href="#i-play"/></svg>Demo
+      </button>
       <button id="btnConnect" class="primary">Conectează</button>
     </div>
   </header>
 
-  <div id="unsupported" class="banner warn" hidden>
-    Browserul nu suportă Web Bluetooth. Folosește Chrome sau Edge pe Windows / Android
-    (pagina trebuie servită prin HTTPS sau de pe localhost). Modul Demo merge oricum.
-  </div>
-  <div id="adBanner" class="banner ad" hidden>
-    <span><b class="ad-tag">Reclamă</b> <span id="adText"></span></span>
-    <button id="btnNoAds" class="ghost small">Elimină reclamele</button>
-  </div>
-  <div id="reminder" class="banner info" hidden>
-    <span id="reminderText"></span>
-    <button id="btnDismiss" class="ghost small">Am înțeles</button>
+  <div class="notices">
+    <div id="unsupported" class="banner" hidden>
+      <svg class="i" aria-hidden="true"><use href="#i-info"/></svg>
+      <span>Bluetooth-ul web merge doar în Chrome sau Edge, pe Windows și Android. Demo-ul merge oriunde.</span>
+    </div>
+    <div id="adBanner" class="banner ad" hidden>
+      <span class="ad-tag">Reclamă</span>
+      <span id="adText" class="ad-text"></span>
+      <button id="btnNoAds" class="ghost small">Elimină reclamele</button>
+    </div>
+    <div id="reminder" class="banner info" hidden>
+      <svg class="i" aria-hidden="true"><use href="#i-alarm"/></svg>
+      <span id="reminderText"></span>
+      <button id="btnDismiss" class="ghost small">Am înțeles</button>
+    </div>
   </div>
 
-  <main class="grid">
-    <section class="card bottle-card">
-      <svg id="bottle" viewBox="0 0 200 320" role="img" aria-label="Nivelul apei în sticlă">
-        <defs><clipPath id="bottleClip"><path id="clipPathShape"/></clipPath></defs>
-        <g clip-path="url(#bottleClip)">
-          <rect x="0" y="0" width="200" height="320" class="bottle-bg"/>
-          <path id="wave2" class="liquid back"/>
-          <path id="wave1" class="liquid"/>
-        </g>
-        <path id="outline" class="bottle-outline"/>
-      </svg>
+  <main class="layout">
+    <section class="card hero" style="--i:0">
+      <div class="well" id="bottleWell">
+        <div class="halo" aria-hidden="true"></div>
+        <svg id="bottle" viewBox="0 0 200 320" role="img" aria-label="Nivelul apei în sticlă">
+          <defs>
+            <clipPath id="bottleClip"><path id="clipPathShape"/></clipPath>
+            <linearGradient id="liqGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style="stop-color: var(--liq-top)"/>
+              <stop offset="1" style="stop-color: var(--liq-bottom)"/>
+            </linearGradient>
+            <linearGradient id="glassGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#fff" stop-opacity=".9"/>
+              <stop offset=".45" stop-color="#fff" stop-opacity=".25"/>
+              <stop offset="1" stop-color="#fff" stop-opacity=".55"/>
+            </linearGradient>
+          </defs>
+          <g clip-path="url(#bottleClip)">
+            <rect x="0" y="0" width="200" height="320" fill="url(#glassGrad)"/>
+            <path id="wave2" class="liquid back"/>
+            <path id="wave1" class="liquid"/>
+            <rect x="52" y="56" width="7" height="230" rx="3.5" class="glint"/>
+          </g>
+          <path id="outline" class="bottle-outline"/>
+          <g class="ticks" aria-hidden="true">
+            <line x1="178" x2="188" y1="238.75" y2="238.75"/>
+            <line x1="174" x2="188" y1="172.5" y2="172.5"/>
+            <line x1="178" x2="188" y1="106.25" y2="106.25"/>
+          </g>
+        </svg>
+      </div>
       <div class="readout">
-        <div class="big"><span id="mlNow">–</span><small> mL</small></div>
-        <div class="sub"><span id="pctNow">–</span>% · raw <span id="rawNow">–</span> · <span id="stableNow">–</span></div>
+        <div class="big"><span id="mlNow">–</span><small>mL</small></div>
+        <div class="stats">
+          <span><b id="pctNow">–</b>% plin</span>
+          <span>brut <b id="rawNow" class="mono">–</b></span>
+          <span id="stableNow" class="state">–</span>
+        </div>
       </div>
     </section>
 
-    <section class="card">
+    <section class="card today" style="--i:1">
       <h2>Azi</h2>
       <div class="goal">
-        <div class="goal-num"><span id="todayMl">0</span> / <span id="goalMl">2000</span> mL</div>
+        <div class="goal-num"><span id="todayMl">0</span><span class="of">din <span id="goalMl">2000</span> mL</span></div>
         <div class="progress"><div id="goalBar"></div></div>
         <div class="muted" id="lastDrink">Niciun consum înregistrat azi</div>
       </div>
-      <h3>Nivel pe parcursul zilei</h3>
-      <svg id="chartDay" class="chart" viewBox="0 0 320 140" preserveAspectRatio="none" aria-label="Nivelul de azi"></svg>
-      <h3>Ultimele 7 zile</h3>
-      <div class="lockable" id="weekWrap">
-        <svg id="chartWeek" class="chart" viewBox="0 0 320 150" aria-label="Consum pe zile"></svg>
-        <button class="lock-overlay" id="weekLock" hidden>🔒 Istoricul pe 7 zile e în Pro</button>
+      <div class="charts">
+        <div>
+          <h3>Nivelul de azi</h3>
+          <svg id="chartDay" class="chart" viewBox="0 0 320 140" preserveAspectRatio="none" aria-label="Nivelul de azi"></svg>
+        </div>
+        <div>
+          <h3>Ultimele 7 zile</h3>
+          <div class="lockable" id="weekWrap">
+            <svg id="chartWeek" class="chart" viewBox="0 0 320 150" aria-label="Consum pe zile"></svg>
+            <button class="lock-overlay" id="weekLock" hidden>
+              <svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>Istoricul pe 7 zile e în Pro
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="card">
-      <div class="agent-head">
-        <h2>Clasamentul național al hidratării</h2>
-        <button id="btnBoard" class="ghost small">Actualizează</button>
-      </div>
-      <div class="muted small">Azi, în timp real. Ești <b id="nickname">anonim</b> <button id="btnNick" class="link">schimbă</button></div>
-      <ol id="leaderboard" class="leaderboard"><li class="muted">Se încarcă…</li></ol>
-    </section>
-
-    <section class="card agent-card">
-      <div class="agent-head">
-        <h2>HydroGPT™ <small class="muted" id="agentEngine">agent local</small></h2>
-        <button id="btnAsk" class="secondary small">Ce zice Consiliul?</button>
+    <section class="card agent-card" style="--i:2">
+      <div class="card-head">
+        <h2><span class="agent-mark"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg></span>HydroGPT™</h2>
+        <span class="engine" id="agentEngine">agent local</span>
+        <button id="btnAsk" class="ghost small">Întreabă Consiliul</button>
       </div>
       <div id="verdict" class="verdict" data-verdict="blind">
-        <div class="verdict-title" id="verdictTitle">Aștept date de la sticlă…</div>
-        <div class="verdict-sub muted" id="verdictSub"></div>
+        <div class="verdict-title" id="verdictTitle">Aștept date de la sticlă</div>
+        <div class="verdict-sub" id="verdictSub"></div>
       </div>
       <ol id="council" class="council" hidden></ol>
       <div id="chatLog" class="chat-log" aria-live="polite"></div>
       <form id="chatForm" class="chat-form" autocomplete="off">
-        <input id="chatInput" maxlength="300" placeholder="Întreabă: „când să beau?”, „cât am băut?”…">
-        <button class="primary" id="chatSend">Trimite</button>
+        <label class="sr-only" for="chatInput">Întrebare pentru HydroGPT</label>
+        <input id="chatInput" maxlength="300" placeholder="Când să beau? Cât am băut azi?">
+        <button class="primary icon-btn" id="chatSend" aria-label="Trimite">
+          <svg class="i" aria-hidden="true"><use href="#i-send"/></svg>
+        </button>
       </form>
-      <div class="muted small" id="chatQuota"></div>
-      <button id="btnReport" class="ghost small report-btn" hidden>📊 Generează raportul KPI pentru board</button>
+      <div class="foot-row">
+        <span class="muted small" id="chatQuota"></span>
+        <button id="btnReport" class="ghost small" hidden>
+          <svg class="i" aria-hidden="true"><use href="#i-chart"/></svg>Raport KPI pentru board
+        </button>
+      </div>
     </section>
 
-    <section class="card">
-      <h2>Evenimente de azi</h2>
-      <ul id="events" class="events"><li class="muted">Nimic încă</li></ul>
+    <section class="card board" style="--i:3">
+      <div class="card-head">
+        <h2>Clasamentul zilei</h2>
+        <button id="btnBoard" class="ghost icon-btn small" aria-label="Actualizează clasamentul">
+          <svg class="i" aria-hidden="true"><use href="#i-refresh"/></svg>
+        </button>
+      </div>
+      <p class="muted small">Joci ca <b id="nickname">anonim</b>
+        <button id="btnNick" class="link"><svg class="i xs" aria-hidden="true"><use href="#i-pencil"/></svg>schimbă porecla</button>
+      </p>
+      <ol id="leaderboard" class="leaderboard">
+        <li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li>
+      </ol>
     </section>
 
-    <section class="card">
-      <h2>Setări și calibrare</h2>
-      <div class="cal-row">
-        <button id="btnEmpty" class="secondary">Setează GOL</button>
-        <span>gol = <b id="calEmpty">–</b></span>
+    <section class="card events-card" style="--i:4">
+      <h2>Înghițiturile de azi</h2>
+      <ul id="events" class="events"></ul>
+    </section>
+
+    <section class="card settings" style="--i:5">
+      <h2>Calibrare și setări</h2>
+      <div class="cal">
+        <div class="cal-step">
+          <button id="btnEmpty" class="soft">Setează gol</button>
+          <span>gol = <b id="calEmpty" class="mono">–</b></span>
+        </div>
+        <div class="cal-step">
+          <button id="btnFull" class="soft">Setează plin</button>
+          <span>plin = <b id="calFull" class="mono">–</b></span>
+        </div>
       </div>
-      <div class="cal-row">
-        <button id="btnFull" class="secondary">Setează PLIN</button>
-        <span>plin = <b id="calFull">–</b></span>
+      <p class="muted small">Pune sticla goală pe senzor și așteaptă „stabil”, apoi apasă Setează gol. Umple-o și apasă Setează plin.</p>
+      <div class="fields">
+        <label>Formă recipient<select id="shape"></select></label>
+        <label>Capacitate (mL)<input id="capacity" type="number" min="50" max="5000" step="10"></label>
+        <label>Obiectiv zilnic (mL)<input id="goal" type="number" min="250" max="6000" step="50"></label>
+        <label>Prag înghițitură (mL)<input id="drinkMin" type="number" min="10" max="300" step="5"></label>
+        <label>Memento după (ore fără apă)<input id="remindHours" type="number" min="0.5" max="12" step="0.5"></label>
+        <label class="check"><input id="notify" type="checkbox"><span>Notificări de sistem cât e pagina deschisă</span></label>
       </div>
-      <p class="muted small">Pune recipientul gol, așteaptă citirea „stabilă”, apasă GOL. Apoi umple-l și apasă PLIN.</p>
-      <label>Formă recipient
-        <select id="shape"></select>
-      </label>
-      <label>Capacitate (mL)
-        <input id="capacity" type="number" min="50" max="5000" step="10">
-      </label>
-      <label>Obiectiv zilnic (mL)
-        <input id="goal" type="number" min="250" max="6000" step="50">
-      </label>
-      <label>Prag consum (mL)
-        <input id="drinkMin" type="number" min="10" max="300" step="5">
-      </label>
-      <label>Memento după (ore fără consum)
-        <input id="remindHours" type="number" min="0.5" max="12" step="0.5">
-      </label>
-      <label class="check"><input id="notify" type="checkbox"> Notificări de sistem (cât e pagina deschisă)</label>
       <div class="row-end">
-        <button id="btnExport" class="ghost small">Exportă CSV</button>
-        <button id="btnClear" class="ghost small danger">Șterge istoricul</button>
+        <button id="btnExport" class="ghost small"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Exportă CSV</button>
+        <button id="btnClear" class="ghost small danger"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg>Șterge istoricul</button>
       </div>
     </section>
   </main>
@@ -140,17 +216,17 @@
   <dialog id="tiersDialog" class="sheet">
     <form method="dialog" class="sheet-head">
       <h2>Alege-ți nivelul de hidratare</h2>
-      <button class="ghost small" aria-label="Închide">✕</button>
+      <button class="ghost icon-btn small" aria-label="Închide"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
     </form>
     <div id="tierGrid" class="tier-grid"></div>
     <div id="invoice" class="invoice" hidden></div>
-    <p class="muted small">* Plățile sunt 100% fictive. Nu se cere și nu se procesează niciun card. E un proiect de facultate.</p>
+    <p class="muted small">Plățile sunt fictive. Nu se cere și nu se procesează niciun card. E un proiect de facultate.</p>
   </dialog>
 
-  <dialog id="reportDialog" class="sheet">
+  <dialog id="reportDialog" class="sheet narrow">
     <form method="dialog" class="sheet-head">
-      <h2>Raport trimestrial de hidratare <small class="muted">CONFIDENȚIAL</small></h2>
-      <button class="ghost small" aria-label="Închide">✕</button>
+      <h2>Raport trimestrial de hidratare <span class="confidential">confidențial</span></h2>
+      <button class="ghost icon-btn small" aria-label="Închide"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
     </form>
     <table id="reportTable" class="report"></table>
     <p class="muted small" id="reportFoot"></p>

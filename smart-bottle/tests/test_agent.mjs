@@ -87,7 +87,7 @@ t('fiecare abonament are replici pentru fiecare verdict', () => {
 t('raționament: blocat pe Free, complet pe Ultra cu voturile', () => {
   const ctx = buildContext({ ...base, now: at(16), drinks: [] });
   const d = decide(ctx);
-  assert.ok(reasoningTrace(ctx, d, 'free').some((s) => s.includes('🔒')));
+  assert.ok(reasoningTrace(ctx, d, 'free').some((s) => s.includes('disponibil în Ultra')));
   const ultra = reasoningTrace(ctx, d, 'ultra');
   assert.ok(ultra.some((s) => s.includes('Rinichiul')));
   assert.ok(reasoningTrace(ctx, d, 'enterprise').some((s) => s.includes('Guvernanță')));
@@ -119,7 +119,7 @@ t('raport KPI', () => {
   assert.equal(r['Dimensiune medie sip'], '250 mL');
   assert.equal(r['Sip velocity'], '83 mL/h');        // 500 mL în 6 h
   assert.equal(r['Water churn (reumpleri)'], '1');
-  assert.ok(r.Status.includes('ATTENTION'));          // deficit exact 500 mL: încă nu e AT RISK
+  assert.ok(r.Status === 'Needs attention');          // deficit exact 500 mL: încă nu e AT RISK
 });
 
 console.log(`\n${n} teste trecute`);

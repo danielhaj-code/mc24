@@ -115,6 +115,14 @@ Calibrarea se salvează în browser și se retrimite automat la fiecare conectar
 - Nu funcționează în Firefox sau pe iOS.
 - Memento-ul de inactivitate apare doar cât timp pagina e deschisă (fără activitate în fundal).
 
+## Design
+
+Interfață luminoasă, neumorfică (fără temă întunecată): o singură bază „porțelan” `#F2F5F9`, suprafețe în
+relief prin două umbre (lumină sus-stânga, umbră jos-dreapta), sticlă mată cu blur pe bară și carduri,
+accente pastel albastru `#C8E0F4` și roz `#F5E0E8`, colțuri 14 / 28 / 42 px, iconițe Lucide (fără emoji).
+Fundalul are trei pete de lumină difuză care își schimbă culoarea după abonament (aurii pe Ultra,
+gri-albăstrui pe Enterprise).
+
 ## HydroGPT™ și abonamentele (partea amuzantă)
 
 **Agentul.** Decizia „bea / așteaptă / reumple” o ia *Consiliul Organelor*: Rinichiul, Vezica și Creierul

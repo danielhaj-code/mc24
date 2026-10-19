@@ -8,6 +8,17 @@ import { cloud } from './cloud.js';
 import { dayKey } from './logic.js';
 
 const $ = (id) => document.getElementById(id);
+// Iconițe din sprite-ul Lucide din index.html
+export function icon(name, cls = 'i') {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', cls);
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS(NS, 'use');
+  use.setAttribute('href', `#i-${name}`);
+  svg.append(use);
+  return svg;
+}
 let app;                       // { cfg, state, saveSettings, toast, todayEvents, onTierChange, notify }
 const chat = [];               // { role: 'user'|'agent', text }
 let lastNudge = Date.now();
@@ -52,7 +63,7 @@ export function renderVerdict(force = false) {
     const li = document.createElement('li');
     li.className = v.vote === 'bea' ? 'yes' : 'no';
     li.innerHTML = '<span class="organ"></span><b></b><span class="why muted"></span>';
-    li.children[0].textContent = `${v.icon} ${v.organ}`;
+    li.children[0].append(icon(v.icon), document.createTextNode(v.organ));
     li.children[1].textContent = v.vote;
     li.children[2].textContent = v.reason;
     return li;
@@ -70,7 +81,7 @@ function bubble(role, text, extra = {}) {
     tools.className = 'tools';
     for (const t of extra.tools) {
       const chip = document.createElement('span');
-      chip.textContent = `🔧 ${t.name}`;
+      chip.append(icon('wrench', 'i xs'), document.createTextNode(t.name));
       tools.append(chip);
     }
     div.prepend(tools);
@@ -151,7 +162,7 @@ async function ask(question) {
 function scheduleReminder(minutes, message) {
   app.toast(`HydroGPT a programat un memento peste ${minutes} min`);
   setTimeout(() => {
-    agentSay(`⏰ ${message}`);
+    agentSay(message, { cls: 'alarm' });
     app.toast(message);
     app.notify?.(message);
   }, minutes * 60000);
@@ -248,23 +259,31 @@ async function changeTier(k, btn) {
 export async function refreshBoard() {
   const list = $('leaderboard');
   if (!cloud.ready) {
-    list.innerHTML = '<li class="muted">Clasamentul are nevoie de internet.</li>';
+    list.replaceChildren(emptyRow('wifi-off', 'Clasamentul apare când ești online.'));
     return;
   }
   const rows = await cloud.leaderboard();
   list.replaceChildren();
-  if (!rows?.length) { list.innerHTML = '<li class="muted">Nimeni n-a băut nimic azi. Fii primul!</li>'; return; }
+  if (!rows?.length) { list.replaceChildren(emptyRow('droplet', 'Nimeni n-a băut nimic azi. Primul pahar te pune pe locul 1.')); return; }
   for (const r of rows) {
     const li = document.createElement('li');
     if (r.is_me) li.className = 'me';
     li.innerHTML = '<span class="rank"></span><span class="who"></span><span class="tier-chip"></span><b></b>';
-    li.children[0].textContent = r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `${r.rank}.`;
+    li.children[0].textContent = r.rank;
+    li.children[0].dataset.rank = r.rank;
     li.children[1].textContent = r.nickname + (r.is_me ? ' (tu)' : '');
     li.children[2].textContent = TIERS[r.tier]?.name ?? r.tier;
     li.children[2].dataset.tier = r.tier;
     li.children[3].textContent = `${r.total_ml} mL`;
     list.append(li);
   }
+}
+
+function emptyRow(name, text) {
+  const li = document.createElement('li');
+  li.className = 'empty';
+  li.append(icon(name, 'i lg'), Object.assign(document.createElement('span'), { textContent: text }));
+  return li;
 }
 
 /* =========================== Raport Enterprise =========================== */
@@ -277,6 +296,7 @@ function openReport() {
     tr.innerHTML = '<th></th><td></td>';
     tr.children[0].textContent = k;
     tr.children[1].textContent = v;
+    if (k === 'Status') tr.children[1].dataset.status = v.toLowerCase().replace(/\s+/g, '-');
     table.append(tr);
   }
   const time = new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });

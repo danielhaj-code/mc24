@@ -3,7 +3,7 @@ import {
   EventDetector, dailyTotals, dayKey, calibrationCommand, ABSENT_BELOW,
 } from './logic.js';
 import { displayMl } from './agent.js';
-import { initHydro, onEvent, onConnectionChange, syncGoal, clearCloud } from './hydro.js';
+import { initHydro, onEvent, onConnectionChange, syncGoal, clearCloud, icon } from './hydro.js';
 
 const NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const NUS_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';   // scriem aici
@@ -320,6 +320,7 @@ function frame() {
   const amp = anim.shown > 0.01 ? 4 : 0;
   $('wave1').setAttribute('d', wavePath(y, amp, anim.phase, 0.06));
   $('wave2').setAttribute('d', wavePath(y - 2, amp * 0.8, -anim.phase * 0.8 + 1.5, 0.045));
+  $('bottleWell').style.setProperty('--fill', anim.shown.toFixed(3));
   requestAnimationFrame(frame);
 }
 
@@ -331,7 +332,9 @@ function renderReadout() {
   $('mlNow').textContent = !cfg.calibrated ? '–' : state.absent ? '—' : displayMl(state.ml, cfg.tier);
   $('pctNow').textContent = state.raw === null ? '–' : pctVol;
   $('rawNow').textContent = state.raw ?? '–';
-  $('stableNow').textContent = state.absent ? 'sticla lipsește' : state.stable ? 'stabil' : 'instabil';
+  const st = state.raw === null ? 'idle' : state.absent ? 'absent' : state.stable ? 'stable' : 'moving';
+  $('stableNow').dataset.state = st;
+  $('stableNow').textContent = { idle: 'fără date', absent: 'sticla lipsește', stable: 'stabil', moving: 'se mișcă' }[st];
 }
 
 /* =========================== Desen: grafice =========================== */
@@ -421,14 +424,21 @@ function renderEvents() {
   const evs = todayEvents().slice().reverse();
   list.replaceChildren();
   if (!evs.length) {
-    const li = document.createElement('li'); li.className = 'muted'; li.textContent = 'Nimic încă';
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.append(icon('droplet', 'i lg'), Object.assign(document.createElement('span'), {
+      textContent: 'Nicio înghițitură azi. Ia sticla și bea: apare aici în câteva secunde.',
+    }));
     list.append(li); return;
   }
   for (const e of evs) {
     const li = document.createElement('li');
     li.className = e.type;
     const left = document.createElement('span');
-    left.textContent = `${fmtTime(e.ts)} · ${e.type === 'drink' ? 'Consum' : 'Reumplere'}`;
+    const time = document.createElement('span');
+    time.className = 'mono time';
+    time.textContent = fmtTime(e.ts);
+    left.append(time, document.createTextNode(e.type === 'drink' ? 'Înghițitură' : 'Reumplere'));
     const right = document.createElement('b');
     right.textContent = `${e.type === 'drink' ? '−' : '+'}${e.ml} mL`;
     li.append(left, right);

@@ -20,7 +20,7 @@ export const TIERS = {
     name: 'Ultra', price: '49,99 lei / lună', blurb: 'Somelier de apă personal.',
     nudgeMin: 10, chatPerDay: Infinity, ads: false, precision: 1, council: true,
     weekChart: true, llm: true, report: false,
-    perks: ['Precizie la mililitru', 'Consiliul Organelor: vezi cum votează rinichii', 'AI adevărat (Claude) cu cheia ta API', 'Temă aurie', 'Memento la 10 min'],
+    perks: ['Precizie la mililitru', 'Consiliul Organelor: vezi cum votează rinichii', 'AI adevărat (Gemini) care îți citește sticla și istoricul', 'Temă aurie', 'Memento la 10 min'],
   },
   enterprise: {
     name: 'Enterprise', price: 'Contactează vânzările', blurb: 'Hidratare la scară, cu guvernanță.',
@@ -92,20 +92,20 @@ export function council(ctx) {
   const votes = [];
 
   // Rinichiul: vrea apă dacă ești în urmă sau n-ai băut de mult.
-  if (ctx.deficit > 150) votes.push({ organ: 'Rinichiul', icon: '🫘', vote: 'bea', reason: `Suntem cu ${ctx.deficit} mL în urma planului. Inacceptabil.` });
-  else if (since > 90) votes.push({ organ: 'Rinichiul', icon: '🫘', vote: 'bea', reason: `${since === 999 ? 'Azi încă nimic' : `Au trecut ${since} min`}. Filtrez praf.` });
-  else votes.push({ organ: 'Rinichiul', icon: '🫘', vote: 'așteaptă', reason: 'Sunt mulțumit. Deocamdată.' });
+  if (ctx.deficit > 150) votes.push({ organ: 'Rinichiul', icon: 'bean', vote: 'bea', reason: `Suntem cu ${ctx.deficit} mL în urma planului. Inacceptabil.` });
+  else if (since > 90) votes.push({ organ: 'Rinichiul', icon: 'bean', vote: 'bea', reason: `${since === 999 ? 'Azi încă nimic' : `Au trecut ${since} min`}. Filtrez praf.` });
+  else votes.push({ organ: 'Rinichiul', icon: 'bean', vote: 'așteaptă', reason: 'Sunt mulțumit. Deocamdată.' });
 
   // Vezica: mereu sceptică, mai ales dacă ai băut mult recent.
-  if (ctx.last30Ml >= 300) votes.push({ organ: 'Vezica', icon: '🎈', vote: 'așteaptă', reason: `${ctx.last30Ml} mL în ultima jumătate de oră. Am și eu o capacitate.` });
-  else if (isNight(ctx.hour)) votes.push({ organ: 'Vezica', icon: '🎈', vote: 'așteaptă', reason: 'E noapte. Nu mă trezi la 4.' });
-  else votes.push({ organ: 'Vezica', icon: '🎈', vote: 'bea', reason: 'Am loc. Fie.' });
+  if (ctx.last30Ml >= 300) votes.push({ organ: 'Vezica', icon: 'droplet', vote: 'așteaptă', reason: `${ctx.last30Ml} mL în ultima jumătate de oră. Am și eu o capacitate.` });
+  else if (isNight(ctx.hour)) votes.push({ organ: 'Vezica', icon: 'droplet', vote: 'așteaptă', reason: 'E noapte. Nu mă trezi la 4.' });
+  else votes.push({ organ: 'Vezica', icon: 'droplet', vote: 'bea', reason: 'Am loc. Fie.' });
 
   // Creierul: ține cont de oră și de obiectiv.
-  if (isNight(ctx.hour)) votes.push({ organ: 'Creierul', icon: '🧠', vote: 'așteaptă', reason: 'Somnul e și el hidratare. Pentru creier.' });
-  else if (ctx.todayMl >= ctx.goal) votes.push({ organ: 'Creierul', icon: '🧠', vote: 'așteaptă', reason: 'Obiectivul e atins. Putem bea din plăcere, nu din datorie.' });
-  else if (since >= 45) votes.push({ organ: 'Creierul', icon: '🧠', vote: 'bea', reason: 'Concentrarea scade cu 2% la fiecare procent de deshidratare. Am citit asta undeva.' });
-  else votes.push({ organ: 'Creierul', icon: '🧠', vote: 'așteaptă', reason: 'Ai băut de curând. Lasă-mă să lucrez.' });
+  if (isNight(ctx.hour)) votes.push({ organ: 'Creierul', icon: 'brain', vote: 'așteaptă', reason: 'Somnul e și el hidratare. Pentru creier.' });
+  else if (ctx.todayMl >= ctx.goal) votes.push({ organ: 'Creierul', icon: 'brain', vote: 'așteaptă', reason: 'Obiectivul e atins. Putem bea din plăcere, nu din datorie.' });
+  else if (since >= 45) votes.push({ organ: 'Creierul', icon: 'brain', vote: 'bea', reason: 'Concentrarea scade cu 2% la fiecare procent de deshidratare. Am citit asta undeva.' });
+  else votes.push({ organ: 'Creierul', icon: 'brain', vote: 'așteaptă', reason: 'Ai băut de curând. Lasă-mă să lucrez.' });
 
   return votes;
 }
@@ -174,7 +174,7 @@ export function speak(decision, tier, rng = Math.random) {
 // Pași de „gândire” afișați înaintea răspunsului. Folosesc cifrele reale.
 export function reasoningTrace(ctx, decision, tier) {
   if (!TIERS[tier]?.council) {
-    return ['Analizez...', '🔒 Raționamentul complet e disponibil în Ultra.'];
+    return ['Analizez...', 'Raționamentul complet e disponibil în Ultra.'];
   }
   if (!ctx.sensing) return ['Caut sticla prin Bluetooth...', 'Nicio sticlă. Nicio dată. Nicio speranță.'];
   const steps = [
@@ -184,7 +184,7 @@ export function reasoningTrace(ctx, decision, tier) {
     ctx.minutesSinceDrink === null ? 'Ultima înghițitură: niciuna. Îngrijorător.' : `Ultima înghițitură: acum ${ctx.minutesSinceDrink} min.`,
     'Convoc Consiliul Organelor...',
   ];
-  for (const v of decision.votes) steps.push(`${v.icon} ${v.organ} votează „${v.vote}”: ${v.reason}`);
+  for (const v of decision.votes) steps.push(`${v.organ} votează „${v.vote}”: ${v.reason}`);
   if (tier === 'enterprise') steps.push('Escaladez decizia către Comitetul de Guvernanță Hidrică... aprobat.');
   return steps;
 }
@@ -272,7 +272,7 @@ export function kpiReport(ctx, todayEvents) {
     { k: 'Sip velocity', v: `${velocity} mL/h` },
     { k: 'Water churn (reumpleri)', v: `${refills}` },
     { k: 'Variație față de forecast', v: `${ctx.deficit > 0 ? '−' : '+'}${Math.abs(ctx.deficit)} mL` },
-    { k: 'Status', v: onTrack ? 'ON TRACK 🟢' : ctx.deficit > 500 ? 'AT RISK 🔴' : 'NEEDS ATTENTION 🟡' },
+    { k: 'Status', v: onTrack ? 'On track' : ctx.deficit > 500 ? 'At risk' : 'Needs attention' },
     { k: 'Hydration ROI', v: `${Math.round(ctx.goalPct * 1.37)}% (metodologie confidențială)` },
   ];
 }
