@@ -44,9 +44,10 @@ then confirm it works. Nothing else: no refactors, no changes to the web app or 
    arduino-cli compile --fqbn esp32:esp32:esp32 --build-property "compiler.cpp.extra_flags=-DMOCK_STM32=0" smart-bottle/esp32/SmartBottleBridge
    ```
    If the BLE library complains about partition size, add `--board-options PartitionScheme=huge_app`.
-5. Upload the **mock** build (default):
+5. Compile and upload the **mock** build (default) in one step. Don't use plain `upload` here: it
+   would flash the cached output of the last compile, which is the `MOCK_STM32=0` build from step 4.
    ```
-   arduino-cli upload --fqbn esp32:esp32:esp32 -p COMx smart-bottle/esp32/SmartBottleBridge
+   arduino-cli compile --upload --fqbn esp32:esp32:esp32 -p COMx smart-bottle/esp32/SmartBottleBridge
    ```
    If it says "Failed to connect", ask Daniel to hold the BOOT button while the upload starts.
 6. Verify: `arduino-cli monitor -p COMx -c baudrate=115200`. Expect
