@@ -1,0 +1,13 @@
+# Compilări / unelte
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+Debug/
+Release/
+.settings/
+.vscode/
+node_modules/
+.DS_Store
+Thumbs.db

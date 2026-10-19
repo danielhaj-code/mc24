@@ -1,0 +1,204 @@
+/*
+ * Smart Bottle — punte transparentă UART <-> BLE (Nordic UART Service)
+ * Placă: ESP32 DevKit (Arduino core 2.x sau 3.x)
+ *
+ * Cablaj:  ESP32 GPIO16 (RX2) <- STM32 PC12 (UART5 TX)
+ *          ESP32 GPIO17 (TX2) -> STM32 PD2  (UART5 RX)
+ *          GND comun. Ambele pe 3.3 V: fără divizor de tensiune.
+ *
+ * Linii UART complete ("...\n") de la STM32 -> notificare BLE pe TX.
+ * Scrieri BLE pe RX -> UART spre STM32 (se adaugă '\n' dacă lipsește).
+ * La conectare/deconectare trimite "S,1\n" / "S,0\n" spre STM32.
+ *
+ * MOCK_STM32 = 1: fără STM32. ESP32 generează singur citirile (MockStm32.h), ca să poți
+ * testa BLE-ul și aplicația înainte de cablare. Citirea reală a senzorului rămâne pe STM32;
+ * pune 0 când placa e legată și totul trece din nou prin UART, neschimbat.
+ */
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+
+// 1 = simulează STM32 (fără placă legată)   0 = punte reală UART <-> BLE
+#ifndef MOCK_STM32
+#define MOCK_STM32    1
+#endif
+
+#define DEVICE_NAME   "SmartBottle"
+#define SERVICE_UUID  "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+#define RX_UUID       "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"   // telefon -> dispozitiv
+#define TX_UUID       "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"   // dispozitiv -> telefon
+
+#define UART_RX_PIN   16
+#define UART_TX_PIN   17
+#define UART_BAUD     115200
+#define LED_PIN       2        // LED-ul albastru de pe majoritatea DevKit-urilor
+#define LINE_MAX      32
+#define BOOT_BTN_PIN  0        // butonul BOOT; în modul mock = o înghițitură
+
+static BLEServer *server = nullptr;
+static BLECharacteristic *txChar = nullptr;
+static volatile bool connected = false;
+static bool wasConnected = false;
+
+#if !MOCK_STM32
+static char lineBuf[LINE_MAX];
+static size_t lineLen = 0;
+static bool lineOverflow = false;
+#endif
+
+static void notifyLine(const char *s, size_t n);
+
+#if MOCK_STM32
+#include "MockStm32.h"
+static void mockSink(const char *s, size_t n) {
+  notifyLine(s, n);
+  Serial.write((const uint8_t *)s, n);      // ce ar fi trimis STM32, vizibil și pe USB
+}
+static MockStm32 mock(mockSink);
+// Scrierile BLE sosesc pe task-ul stivei BLE; le procesăm în loop() prin coadă.
+static QueueHandle_t cmdQueue;
+struct Cmd { char text[LINE_MAX]; };
+#endif
+
+class ServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer *) override { connected = true; }
+  void onDisconnect(BLEServer *) override { connected = false; }
+};
+
+class RxCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *c) override {
+    auto v = c->getValue();                 // std::string (core 2.x) sau String (core 3.x)
+    size_t n = v.length();
+    if (n == 0) return;
+#if MOCK_STM32
+    // poate conține mai multe linii ("C,800,3000\nR\n"): le punem pe rând în coadă
+    Cmd cmd; size_t len = 0;
+    for (size_t i = 0; i <= n; i++) {
+      char c = i < n ? v.c_str()[i] : '\n';
+      if (c == '\r') continue;
+      if (c == '\n') {
+        if (len) { cmd.text[len] = '\0'; xQueueSend(cmdQueue, &cmd, 0); }
+        len = 0;
+      } else if (len < LINE_MAX - 1) {
+        cmd.text[len++] = c;
+      }
+    }
+#else
+    Serial2.write((const uint8_t *)v.c_str(), n);
+    if (v.c_str()[n - 1] != '\n') Serial2.write('\n');
+#endif
+  }
+};
+
+static void notifyLine(const char *s, size_t n) {
+  if (!connected) return;                   // nimeni nu ascultă: aruncăm
+  txChar->setValue((uint8_t *)s, n);
+  txChar->notify();
+}
+
+void setup() {
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+  Serial.begin(115200);                     // debug pe USB
+#if MOCK_STM32
+  pinMode(BOOT_BTN_PIN, INPUT_PULLUP);
+  cmdQueue = xQueueCreate(8, sizeof(Cmd));
+  mock.begin();
+#else
+  Serial2.begin(UART_BAUD, SERIAL_8N1, UART_RX_PIN, UART_TX_PIN);
+#endif
+
+  BLEDevice::init(DEVICE_NAME);
+  server = BLEDevice::createServer();
+  server->setCallbacks(new ServerCallbacks());
+
+  BLEService *svc = server->createService(SERVICE_UUID);
+  txChar = svc->createCharacteristic(TX_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+  txChar->addDescriptor(new BLE2902());     // CCCD: permite clientului să activeze notificările
+
+  BLECharacteristic *rxChar = svc->createCharacteristic(
+      RX_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
+  rxChar->setCallbacks(new RxCallbacks());
+  svc->start();
+
+  BLEAdvertising *adv = BLEDevice::getAdvertising();
+  adv->addServiceUUID(SERVICE_UUID);        // necesar pentru filtrul din Web Bluetooth / ble-plx
+  adv->setScanResponse(true);
+  BLEDevice::startAdvertising();
+
+#if MOCK_STM32
+  Serial.println("SmartBottle MOCK pornit (fără STM32). Comenzi: d r l a ?");
+#else
+  Serial2.print("S,0\n");
+  Serial.println("SmartBottle bridge pornit");
+#endif
+}
+
+#if MOCK_STM32
+static void mockLoop() {
+  Cmd cmd;
+  while (xQueueReceive(cmdQueue, &cmd, 0) == pdTRUE) mock.handleCommand(cmd.text);
+
+  while (Serial.available()) {
+    switch (Serial.read()) {
+      case 'd': mock.startSip(); break;
+      case 'r': mock.refill(); break;
+      case 'l': mock.toggleLift(); break;
+      case 'a': mock.toggleAuto(); break;
+      case '?': Serial.println("d = înghițitură, r = reumplere, l = ridică/pune sticla, a = auto on/off"); break;
+      default: break;
+    }
+  }
+
+  // BOOT: activ pe 0, cu debounce simplu
+  static bool lastBtn = true;
+  static uint32_t btnTs = 0;
+  bool btn = digitalRead(BOOT_BTN_PIN);
+  if (btn != lastBtn && millis() - btnTs > 50) {
+    btnTs = millis();
+    lastBtn = btn;
+    if (!btn) mock.startSip();
+  }
+  mock.tick();
+}
+#endif
+
+void loop() {
+#if MOCK_STM32
+  mockLoop();
+#else
+  // UART -> BLE, linie cu linie
+  while (Serial2.available()) {
+    char c = (char)Serial2.read();
+    if (c == '\n') {
+      if (!lineOverflow && lineLen > 0) {
+        lineBuf[lineLen++] = '\n';
+        notifyLine(lineBuf, lineLen);
+        Serial.write((const uint8_t *)lineBuf, lineLen);
+      }
+      lineLen = 0;
+      lineOverflow = false;
+    } else if (!lineOverflow) {
+      if (lineLen < LINE_MAX - 1) lineBuf[lineLen++] = c;
+      else lineOverflow = true;             // linie prea lungă: aruncată
+    }
+  }
+#endif
+
+  // tranziții de conexiune (făcute aici, nu în callback, ca să nu blocăm stiva BLE)
+  if (connected != wasConnected) {
+    wasConnected = connected;
+    digitalWrite(LED_PIN, connected ? HIGH : LOW);
+#if MOCK_STM32
+    mock.handleCommand(connected ? "S,1" : "S,0");
+#else
+    Serial2.print(connected ? "S,1\n" : "S,0\n");
+#endif
+    if (!connected) {
+      delay(300);                           // lasă stiva să elibereze conexiunea
+      BLEDevice::startAdvertising();        // redevine vizibil pentru o nouă conectare
+    }
+  }
+  delay(2);
+}
