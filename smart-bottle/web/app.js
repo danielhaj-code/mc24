@@ -4,6 +4,7 @@ import {
 } from './logic.js';
 import { displayMl } from './agent.js';
 import { authGate } from './auth.js';
+import { initMobile, keepAwake, haptic, refreshWakeLock, wakeLockSupported } from './mobile.js';
 import { initHydro, onEvent, onConnectionChange, syncGoal, clearCloud, icon } from './hydro.js';
 
 const NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
@@ -16,7 +17,7 @@ const $ = (id) => document.getElementById(id);
 const DEFAULTS = {
   empty: 0, full: 3000, calibrated: false, calibratedEmpty: false, calibratedFull: false,
   capacity: 750, shape: 'cylinder', goal: 2000,
-  drinkMin: 30, remindHours: 2, notify: false,
+  drinkMin: 30, remindHours: 2, notify: false, wakeLock: true,
   tier: 'free',
 };
 
@@ -343,6 +344,7 @@ function onLine(line) {
     state.events.push(ev);
     if (ev.type === 'drink') { state.lastDrinkTs = ev.ts; state.reminded = false; hideReminder(); }
     toast(ev.type === 'drink' ? `Ai băut ${ev.ml} mL` : `Reumplere: +${ev.ml} mL`);
+    haptic(ev.type === 'drink' ? [18, 60, 18] : 30);
     renderToday(); renderEvents(); renderWeekChart();
     onEvent(ev);
   }
@@ -360,6 +362,7 @@ function onState(s) {
   const on = s === 'on' || s === 'reconnected';
   state.connected = on;
   $('btnConnect').textContent = on ? 'Deconectează' : 'Conectează';
+  $('btnConnect').className = on ? 'ghost' : 'primary';   // „Deconectează” nu mai e acțiunea principală
   $('btnConnect').disabled = false;
   $('btnDemo').hidden = on;
   $('linkLost').hidden = s !== 'lost';
@@ -370,9 +373,11 @@ function onState(s) {
     state.link.send(calibrationCommand(cfg));        // STM32 ține calibrarea doar în RAM
     state.link.send('R\n');
     startHeartbeat();
+    keepAwake(true);
     if (s === 'reconnected') toast('Reconectat');
   } else {
     stopHeartbeat();
+    keepAwake(false);
     if (s === 'lost') state.lostLink = state.link;   // păstrat pentru butonul „Reconectează”
     state.connectedSince = null;
     state.link = null;
@@ -630,6 +635,8 @@ function renderSettings() {
   $('drinkMin').value = cfg.drinkMin;
   $('remindHours').value = cfg.remindHours;
   $('notify').checked = cfg.notify;
+  $('wakeLock').checked = cfg.wakeLock;
+  $('wakeLockRow').hidden = !wakeLockSupported();
 }
 
 function applyCalibration() {
@@ -678,6 +685,8 @@ function bindSettings() {
     }
     cfg.notify = e.target.checked; saveSettings();
   });
+
+  $('wakeLock').addEventListener('change', (e) => { cfg.wakeLock = e.target.checked; saveSettings(); refreshWakeLock(); });
 
   $('btnEmpty').addEventListener('click', () => captureCal('empty'));
   $('btnFull').addEventListener('click', () => captureCal('full'));
@@ -763,7 +772,13 @@ function toast(text) {
 
 /* =========================== Pornire =========================== */
 async function init() {
-  if (!navigator.bluetooth) $('unsupported').hidden = false;
+  let unsupportedHidden = false;
+  try { unsupportedHidden = localStorage.getItem('sb.hideUnsupported') === '1'; } catch { /* fără stocare */ }
+  if (!navigator.bluetooth && !unsupportedHidden) $('unsupported').hidden = false;
+  $('btnUnsupportedClose').addEventListener('click', () => {
+    $('unsupported').hidden = true;
+    try { localStorage.setItem('sb.hideUnsupported', '1'); } catch { /* fără stocare */ }
+  });
   bindSettings();
   renderSettings();
   setBottleShape();
@@ -801,6 +816,21 @@ async function init() {
   initHydro({
     cfg, state, saveSettings, toast, todayEvents, notify: systemNotify,
     onTierChange: () => { renderReadout(); renderWeekChart(); },
+  });
+
+  // scurtătura „Demo” din aplicația instalată
+  if (new URLSearchParams(location.search).has('demo')) startDemo();
+
+  initMobile({
+    wakeLockEnabled: () => cfg.wakeLock,
+    // La revenirea în prim-plan, timer-ele au fost încetinite: pornim curat și verificăm imediat.
+    onResume: () => {
+      checkReminder();
+      if (state.connected && state.link && !state.reconnecting) {
+        monitor.reset(Date.now());
+        state.link.send('P\n');
+      }
+    },
   });
 
   if ('serviceWorker' in navigator && window.isSecureContext) {

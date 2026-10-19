@@ -2,12 +2,14 @@
 <html lang="ro">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Smart Bottle</title>
   <meta name="theme-color" content="#F2F5F9">
   <meta name="color-scheme" content="light only">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
@@ -38,6 +40,8 @@
       <symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
       <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
       <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></symbol>
+      <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
       <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
     </defs>
   </svg>
@@ -53,7 +57,7 @@
     <div class="conn">
       <span id="connState" class="pill off">Deconectat</span>
       <button id="btnDemo" class="ghost" title="Simulează sticla, fără hardware">
-        <svg class="i" aria-hidden="true"><use href="#i-play"/></svg>Demo
+        <svg class="i" aria-hidden="true"><use href="#i-play"/></svg><span>Demo</span>
       </button>
       <button id="btnConnect" class="primary">Conectează</button>
       <button id="btnAdmin" class="ghost icon-btn" title="Cine are acces" aria-label="Administrare acces" hidden>
@@ -114,6 +118,7 @@
     <div id="unsupported" class="banner" hidden>
       <svg class="i" aria-hidden="true"><use href="#i-info"/></svg>
       <span>Bluetooth-ul web merge doar în Chrome sau Edge, pe Windows și Android. Demo-ul merge oriunde.</span>
+      <button id="btnUnsupportedClose" class="ghost icon-btn small" aria-label="Ascunde"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
     </div>
     <div id="adBanner" class="banner ad" hidden>
       <span class="ad-tag">Reclamă</span>
@@ -138,7 +143,7 @@
   </div>
 
   <main class="layout">
-    <section class="card hero" style="--i:0">
+    <section class="card hero" id="secBottle" style="--i:0">
       <div class="well" id="bottleWell">
         <div class="halo" aria-hidden="true"></div>
         <svg id="bottle" viewBox="0 0 200 320" role="img" aria-label="Nivelul apei în sticlă">
@@ -175,10 +180,11 @@
           <span>brut <b id="rawNow" class="mono">–</b></span>
           <span id="stableNow" class="state">–</span>
         </div>
+        <div class="hero-actions" id="heroActions"></div>
       </div>
     </section>
 
-    <section class="card today" style="--i:1">
+    <section class="card today" id="secToday" style="--i:1">
       <h2>Azi</h2>
       <div class="goal">
         <div class="goal-num"><span id="todayMl">0</span><span class="of">din <span id="goalMl">2000</span> mL</span></div>
@@ -237,7 +243,7 @@
       </div>
     </section>
 
-    <section class="card board" style="--i:3">
+    <section class="card board" id="secBoard" style="--i:3">
       <div class="card-head">
         <h2>Clasamentul zilei</h2>
         <button id="btnBoard" class="ghost icon-btn small" aria-label="Actualizează clasamentul">
@@ -252,13 +258,18 @@
       </ol>
     </section>
 
-    <section class="card events-card" style="--i:4">
+    <section class="card events-card" id="secEvents" style="--i:4">
       <h2>Înghițiturile de azi</h2>
       <ul id="events" class="events"></ul>
     </section>
 
-    <section class="card settings" style="--i:5">
+    <section class="card settings" id="secSettings" style="--i:5">
       <h2>Calibrare și setări</h2>
+      <div class="account-row" id="accountRow" hidden>
+        <span class="muted small" id="accountEmail"></span>
+        <button id="btnAdmin2" class="ghost small" hidden><svg class="i" aria-hidden="true"><use href="#i-users"/></svg>Cine are acces</button>
+        <button id="btnSignOut2" class="ghost small"><svg class="i" aria-hidden="true"><use href="#i-log-out"/></svg>Ieși din cont</button>
+      </div>
       <div class="cal">
         <div class="cal-step">
           <button id="btnEmpty" class="soft">Setează gol</button>
@@ -277,6 +288,7 @@
         <label>Prag înghițitură (mL)<input id="drinkMin" type="number" min="10" max="300" step="5"></label>
         <label>Memento după (ore fără apă)<input id="remindHours" type="number" min="0.5" max="12" step="0.5"></label>
         <label class="check"><input id="notify" type="checkbox"><span>Notificări de sistem cât e pagina deschisă</span></label>
+        <label class="check" id="wakeLockRow"><input id="wakeLock" type="checkbox"><span>Ține ecranul aprins cât e conectată sticla (altfel telefonul oprește Bluetooth-ul în repaus)</span></label>
       </div>
       <div class="row-end">
         <button id="btnExport" class="ghost small"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Exportă CSV</button>
@@ -284,6 +296,14 @@
       </div>
     </section>
   </main>
+
+  <nav class="tabbar" id="tabbar" aria-label="Secțiuni">
+    <a href="#secBottle" data-tab="secBottle"><svg class="i" aria-hidden="true"><use href="#i-droplet"/></svg><span>Sticla</span></a>
+    <a href="#secToday" data-tab="secToday"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg><span>Azi</span></a>
+    <a href="#agentCard" data-tab="agentCard"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span>Agent</span></a>
+    <a href="#secBoard" data-tab="secBoard"><svg class="i" aria-hidden="true"><use href="#i-trophy"/></svg><span>Top</span></a>
+    <a href="#secSettings" data-tab="secSettings"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span>Setări</span></a>
+  </nav>
 
   <dialog id="tiersDialog" class="sheet">
     <form method="dialog" class="sheet-head">

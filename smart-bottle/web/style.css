@@ -450,14 +450,121 @@ dialog.sheet::backdrop { background: rgba(38, 50, 64, .16); backdrop-filter: blu
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* =========================== Telefon =========================== */
-@media (max-width: 560px) {
-  .topbar { padding: 12px 16px; }
-  .conn { width: 100%; }
-  .conn .pill { margin-right: auto; }
-  .brand-name { font-size: 1rem; }
+html { -webkit-tap-highlight-color: transparent; scroll-padding-top: 84px; }
+.tabbar, .account-row { display: none; }
+.hero-actions:empty { display: none; }
+
+@media (max-width: 640px) {
+  :root { --r-md: 24px; --r-lg: 32px; }
+
+  /* bara de sus: o singură linie, fără butoane (acestea stau lângă sticlă și în setări) */
+  .topbar { padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top)); gap: 10px; flex-wrap: nowrap; }
+  .brand { gap: 10px; min-width: 0; }
+  .brand-mark { width: 34px; height: 34px; }
+  .conn { width: auto; gap: 8px; margin-left: auto; }
+  .conn .pill { margin: 0; }
+  #btnAdmin, #btnSignOut { display: none; }
+
+  .notices { padding: 0 12px; }
+  .notices:has(.banner:not([hidden])) { padding-top: 12px; }
+  .banner { padding: 10px 12px; font-size: .875rem; }
+
+  /* conținut: carduri pe toată lățimea, în ordinea de folosire pe telefon */
+  .layout { gap: 14px; padding: 14px 12px calc(96px + env(safe-area-inset-bottom)); }
+  .card { padding: 20px 18px; scroll-margin-top: 72px; }
+  .hero { order: 1; } .today { order: 2; } .events-card { order: 3; }
+  .agent-card { order: 4; } .board { order: 5; } .settings { order: 6; }
+  h2 { font-size: 1.125rem; margin-bottom: 14px; }
+
+  /* sticla: alături de număr, nu deasupra lui */
+  .hero { display: grid; grid-template-columns: minmax(0, 42%) 1fr; align-items: center; gap: 16px; }
+  .well { padding: 14px 8px 10px; border-radius: var(--r-md); }
+  #bottle { max-width: 130px; }
+  .readout { text-align: left; }
+  .readout .big { font-size: clamp(2.6rem, 13vw, 3.4rem); }
+  .stats { justify-content: flex-start; gap: 6px; margin-top: 12px; }
+  .stats > span { padding: 4px 10px; }
+  .hero-actions { display: grid; gap: 8px; margin-top: 16px; }
+  .hero-actions button { width: 100%; min-height: 44px; }
+
+  /* atingere: ținte de cel puțin 44 px, text de 16 px în câmpuri */
+  button { min-height: 44px; }
+  button.small { min-height: 40px; }
+  button.link { min-height: 32px; }
+  input, select { font-size: 16px; min-height: 48px; }
+  .fields label.check { min-height: 44px; }
+  .fields { grid-template-columns: 1fr 1fr; gap: 16px 12px; }
+  .fields label:has(select), .fields label.check { grid-column: 1 / -1; }
+  button.link { min-height: 40px; }
+  .hero-actions .ghost { background: rgba(255, 255, 255, .5); }
+
+  /* abonamentele: carusel orizontal, câte un card pe ecran */
+  .tier-grid { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 84%; overflow-x: auto;
+    scroll-snap-type: x mandatory; margin: 0 -16px; padding: 4px 16px 16px; gap: 12px; scrollbar-width: none; }
+  .tier-grid::-webkit-scrollbar { display: none; }
+  .tier { scroll-snap-align: center; }
+
+  .goal-num > span:first-child { font-size: 2rem; }
+  .charts { margin-top: 20px; gap: 20px; }
+  #chartDay { height: 120px; }
+
+  .verdict { padding: 18px 18px; border-radius: 18px; }
+  .verdict-title { font-size: 1.375rem; }
+  .council li { flex-basis: 100%; }
+  .chat-log { max-height: 46dvh; }
   .msg { max-width: 88%; }
-  #bottle { max-width: 180px; }
-  .well { padding: 20px 12px 14px; }
+  .chat-form { position: sticky; bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .agent-lock { padding: 22px 18px; gap: 14px; }
+
+  .cal { gap: 10px; }
+  .cal-step { flex-basis: 100%; }
+  .cal-step button { flex: 0 0 150px; }
+  .row-end { justify-content: stretch; }
+  .row-end button { flex: 1; }
+  .account-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 18px; }
+  .account-row[hidden] { display: none; }
+  .account-row .muted { flex-basis: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+  /* bara de secțiuni, în zona degetului mare */
+  .tabbar {
+    position: fixed; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 100;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    padding: 6px; border-radius: 22px;
+    background: rgba(246, 248, 251, .72);
+    backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, .8); box-shadow: 0 10px 30px -12px rgba(38, 50, 64, .3);
+  }
+  .tabbar a {
+    display: grid; justify-items: center; gap: 2px; padding: 8px 2px; min-height: 52px; border-radius: 16px;
+    color: var(--muted); text-decoration: none; font-size: .6875rem; font-weight: 500;
+    transition: background-color 200ms var(--ease), color 200ms var(--ease);
+  }
+  .tabbar a[aria-current] { color: var(--blue-ink); background: var(--blue); }
+  .tabbar a:active { transform: scale(.96); }
+  body[data-auth="out"] .tabbar { display: none; }
+
+  /* dialogurile devin foi care urcă de jos */
+  dialog.sheet, dialog.sheet.narrow {
+    width: 100%; max-width: none; max-height: 88dvh; margin: auto 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+    border-radius: 28px 28px 0 0; border-bottom: 0;
+  }
+  dialog.sheet[open] { animation: sheet-up 320ms var(--ease) both; }
+  @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } }
+  .sheet-head { position: sticky; top: -20px; margin: -20px -16px 16px; padding: 20px 16px 12px; background: rgba(246, 248, 251, .92); backdrop-filter: blur(12px); z-index: 1; }
+  .sheet-head::before { content: ''; position: absolute; top: 8px; left: 50%; width: 40px; height: 4px; border-radius: 2px; background: #D3DBE5; transform: translateX(-50%); }
+  .tier { padding: 20px; }
+
+  .toast { bottom: calc(90px + env(safe-area-inset-bottom)); }
+
+  /* performanță: blur pe fiecare card costă mult pe GPU-urile de telefon */
+  .card { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(247, 249, 252, .92); }
+  .blob { filter: blur(60px); animation: none; }
+}
+
+@media (max-width: 380px) {
+  .brand-name { display: none; }
+  .hero { grid-template-columns: minmax(0, 40%) 1fr; gap: 12px; }
+  .readout .big small { font-size: 1rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
