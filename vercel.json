@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/", "destination": "/smart-bottle/web/index.html" },
+    { "source": "/:path((?!smart-bottle/).*)", "destination": "/smart-bottle/web/:path" }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    }
+  ]
+}

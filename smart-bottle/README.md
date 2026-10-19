@@ -93,6 +93,8 @@ python -m http.server 8000
 ```
 Deschide `http://localhost:8000` în Chrome sau Edge. Pe `localhost` Web Bluetooth funcționează și fără HTTPS.
 
+**Online (Vercel):** repo-ul e legat de Vercel, fiecare push pe `main` publică automat aplicația (HTTPS, deci merge și pe Android). `vercel.json` din rădăcina repo-ului servește `smart-bottle/web/` la adresa principală.
+
 **Android:** pagina trebuie servită prin HTTPS. Ai două variante:
 - Urci folderul `web/` pe GitHub Pages, Cloudflare Pages sau Netlify (sunt doar fișiere statice).
 - Folosești `adb reverse tcp:8000 tcp:8000` și deschizi `http://localhost:8000` în Chrome pe telefon.
