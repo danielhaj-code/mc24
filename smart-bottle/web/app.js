@@ -3,6 +3,7 @@ import {
   EventDetector, dailyTotals, dayKey, calibrationCommand, ABSENT_BELOW,
 } from './logic.js';
 import { displayMl } from './agent.js';
+import { authGate } from './auth.js';
 import { initHydro, onEvent, onConnectionChange, syncGoal, clearCloud, icon } from './hydro.js';
 
 const NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
@@ -631,6 +632,7 @@ async function init() {
   renderToday(); renderEvents(); renderWeekChart(); renderDayChart();
   setInterval(checkReminder, 30000);
 
+  await authGate();
   initHydro({
     cfg, state, saveSettings, toast, todayEvents, notify: systemNotify,
     onTierChange: () => { renderReadout(); renderWeekChart(); },

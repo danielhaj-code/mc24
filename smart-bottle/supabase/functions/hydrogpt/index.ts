@@ -65,6 +65,8 @@ Deno.serve(async (req) => {
   });
   const { data: { user } } = await sb.auth.getUser(auth.replace(/^Bearer\s+/i, ''));
   if (!user) return json({ error: 'neautentificat' }, 401);
+  const { data: allowed } = await sb.rpc('is_allowed');
+  if (!allowed) return json({ error: 'fără acces' }, 403);
 
   // Abonamentul se citește din baza de date, nu din ce trimite clientul.
   const { data: profile } = await sb.from('profiles').select('tier, nickname, goal_ml').eq('id', user.id).single();

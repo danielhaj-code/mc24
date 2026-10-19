@@ -1,5 +1,5 @@
-// Partea de cloud (Supabase): cont anonim, abonament, sincronizare, clasament și agentul AI.
-// Totul e opțional: fără rețea, aplicația merge mai departe doar local.
+// Partea de cloud (Supabase): autentificare cu Google, lista de acces, abonament,
+// sincronizare, clasament și agentul AI. Fără internet, aplicația merge mai departe doar local.
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
 const SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -8,28 +8,59 @@ export const cloud = {
   sb: null,
   user: null,
   profile: null,       // { nickname, tier, goal_ml }
-  ready: false,
+  admin: false,
+  ready: false,        // autentificat, pe listă și cu profil încărcat
 
-  async init() {
+  // Încarcă SDK-ul. false = fără internet.
+  async connect() {
+    if (this.sb) return true;
     try {
       const { createClient } = await import(SDK);
       this.sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true },
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
       });
-      let { data: { session } } = await this.sb.auth.getSession();
-      if (!session) {
-        const { data, error } = await this.sb.auth.signInAnonymously();
-        if (error) throw error;
-        session = data.session;
-      }
-      this.user = session.user;
-      await this.loadProfile();
-      this.ready = true;
+      return true;
     } catch (e) {
-      console.warn('cloud indisponibil, continuăm local', e);
-      this.ready = false;
+      console.warn('Supabase indisponibil', e);
+      return false;
     }
-    return this.ready;
+  },
+
+  // Starea sesiunii: 'offline' | 'signed-out' | 'denied' | 'ready'
+  async status() {
+    if (!(await this.connect())) return 'offline';
+    const { data: { session } } = await this.sb.auth.getSession();
+    if (!session) return 'signed-out';
+    this.user = session.user;
+    const { data: allowed, error } = await this.sb.rpc('is_allowed');
+    if (error) { console.warn('is_allowed', error.message); return 'offline'; }
+    if (!allowed) return 'denied';
+    await this.loadProfile();
+    const { data: admin } = await this.sb.rpc('is_admin');
+    this.admin = !!admin;
+    this.ready = true;
+    return 'ready';
+  },
+
+  // Păstrat pentru hydro.js: true dacă sesiunea e gata de folosit.
+  async init() {
+    if (this.ready) return true;
+    return (await this.status()) === 'ready';
+  },
+
+  // Redirecționează spre Google; la întoarcere sesiunea vine în URL.
+  // Adresele care nu sunt pe listă sunt respinse de hook-ul din Supabase la crearea contului.
+  async signInWithGoogle() {
+    const { error } = await this.sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: 'select_account' } },
+    });
+    if (error) throw error;
+  },
+
+  async signOut() {
+    this.ready = false; this.admin = false; this.profile = null; this.user = null;
+    if (this.sb) await this.sb.auth.signOut();
   },
 
   async loadProfile() {
@@ -57,12 +88,6 @@ export const cloud = {
     return data;   // factura
   },
 
-  async invoices() {
-    if (!this.ready) return [];
-    const { data } = await this.sb.from('invoices').select('*').order('created_at', { ascending: false }).limit(5);
-    return data ?? [];
-  },
-
   async leaderboard() {
     if (!this.ready) return null;
     const { data, error } = await this.sb.rpc('leaderboard_today');
@@ -84,6 +109,21 @@ export const cloud = {
   async clearEvents() {
     if (!this.ready) return;
     await this.sb.from('drink_events').delete().eq('user_id', this.user.id);
+  },
+
+  // ---- administrare (funcțiile verifică singure că ești admin) ----
+  async listAllowed() {
+    const { data, error } = await this.sb.rpc('admin_list_allowed');
+    if (error) throw error;
+    return data;
+  },
+  async addAllowed(email, note) {
+    const { error } = await this.sb.rpc('admin_add_email', { new_email: email, new_note: note || null });
+    if (error) throw error;
+  },
+  async removeAllowed(email) {
+    const { error } = await this.sb.rpc('admin_remove_email', { old_email: email });
+    if (error) throw error;
   },
 
   // Agentul AI din edge function. Întoarce null dacă trebuie folosit agentul local.

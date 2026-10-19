@@ -148,7 +148,12 @@ Plata e 100% fictivă: niciun câmp de card, `checkout()` din baza de date emite
 
 Proiectul e deja configurat (`web/config.js`). Fără internet, aplicația merge mai departe doar local.
 
-- **Conturi anonime:** fiecare browser primește un cont și o poreclă („Delfinul Deshidratat #0586”).
+- **Autentificare:** doar cu Google, și doar pentru adresele de pe lista de acces (`allowed_emails`).
+  Hook-ul Supabase *Before User Created* (`public.hook_before_user_created`) refuză conturile din afara listei,
+  iar politicile RLS cer în plus `is_allowed()`, așa că cine e scos de pe listă pierde accesul imediat.
+  Administratorul (`app_admins`, inițial `hajdaniel123@gmail.com`) are în bara de sus butonul *Cine are acces*,
+  de unde adaugă sau scoate adrese. Fiecare cont primește o poreclă („Delfinul Deshidratat #0586”).
+- **Fără internet:** ecranul de intrare oferă „Continuă fără cont”: sticla merge local, fără clasament și fără AI în cloud.
 - **Tabele:** `profiles` (porecla, abonamentul), `drink_events` (istoricul, sincronizat fără duplicate), `invoices`.
 - **RLS:** fiecare vede doar datele lui. Abonamentul se schimbă doar prin `checkout()`, nu prin update direct.
   Clasamentul (`leaderboard_today()`) expune doar porecla și totalul zilei.
@@ -156,8 +161,9 @@ Proiectul e deja configurat (`web/config.js`). Fără internet, aplicația merge
   și cheia Gemini din secretul `GEMINI_API_KEY`. Modelul se poate schimba din secretul `GEMINI_MODEL`
   (implicit `gemini-3.5-flash-lite`).
 
-**De la zero, pe alt proiect:** rulează `supabase/migrations/*.sql` în SQL Editor, activează
-*Authentication → Sign In / Providers → Allow anonymous sign-ins*, publică funcția
+**De la zero, pe alt proiect:** rulează `supabase/migrations/*.sql` în ordine în SQL Editor, activează
+providerul Google și hook-ul *Before User Created* → `public.hook_before_user_created`, adaugă adresa
+aplicației la *Redirect URLs*, publică funcția
 (`supabase functions deploy hydrogpt`), adaugă secretul `GEMINI_API_KEY` și pune URL-ul și cheia
 publishable în `web/config.js`.
 
