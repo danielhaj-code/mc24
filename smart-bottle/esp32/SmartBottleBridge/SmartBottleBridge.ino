@@ -55,6 +55,7 @@ static bool wasConnected = false;
 // Starea heartbeat-ului (scrisă și din callback-ul BLE, de aceea volatile)
 static volatile uint32_t lastAppRx = 0;     // ultima scriere de la aplicație
 static volatile bool appPings = false;      // clientul curent folosește heartbeat-ul
+static volatile bool appBye = false;        // aplicația a trimis „B” (la revedere)
 static uint32_t lastSourceRx = 0;           // ultima linie de la STM32 (sau mock)
 
 static void notifyLine(const char *s, size_t n);
@@ -78,7 +79,7 @@ static bool lineOverflow = false;
 #endif
 
 class ServerCallbacks : public BLEServerCallbacks {
-  void onConnect(BLEServer *) override { connected = true; appPings = false; lastAppRx = millis(); }
+  void onConnect(BLEServer *) override { connected = true; appPings = false; appBye = false; lastAppRx = millis(); }
   void onDisconnect(BLEServer *) override { connected = false; }
 };
 
@@ -119,6 +120,14 @@ static void sendPong() {
 
 // O linie de la aplicație: ping-ul îl tratăm aici, restul merge la STM32 (sau la mock).
 static void handleAppLine(const char *line) {
+  if (line[0] == 'B' && line[1] == '\0') {  // aplicația pleacă: închidem noi legătura,
+    appBye = true;                          // altfel Windows o poate ține deschisă
+    appPings = false;
+    Serial.println("[app] la revedere, închid conexiunea");
+    if (connected) server->disconnect(server->getConnId());
+    return;
+  }
+  appBye = false;
   if (line[0] == 'P' && line[1] == '\0') {
     appPings = true;
     sendPong();
@@ -200,7 +209,7 @@ static void mockLoop() {
 #else
 // 0 = niciun client, 1 = client BLE care nu răspunde (nu mai scrie), 2 = aplicație activă
 static int appState() {
-  if (!connected) return 0;
+  if (!connected || appBye) return 0;
   return millis() - lastAppRx < APP_ALIVE_MS ? 2 : 1;
 }
 
@@ -262,6 +271,9 @@ void loop() {
   }
 
   // tranziții de conexiune (făcute aici, nu în callback, ca să nu blocăm stiva BLE)
+  // onDisconnect nu vine mereu (ex. Windows ține legătura); numărul real de clienți decide
+  if (connected && server->getConnectedCount() == 0) connected = false;
+
   if (connected != wasConnected) {
     wasConnected = connected;
     digitalWrite(LED_PIN, connected ? HIGH : LOW);

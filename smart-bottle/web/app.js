@@ -207,10 +207,19 @@ class BleDevice {
     this.onState('reconnected');
   }
 
-  disconnect() {
+  // „B” (la revedere) întâi: Chrome pe Windows poate ține legătura BLE deschisă și după
+  // gatt.disconnect(), deci ESP32 nu ar afla. La „B” închide el conexiunea.
+  async disconnect() {
     this.manual = true;
-    if (this.device?.gatt?.connected) this.device.gatt.disconnect();
-    else this.onState?.('off');
+    if (this.device?.gatt?.connected) {
+      await Promise.race([this.send('B\n'), sleep(300)]);
+      try { this.device.gatt.disconnect(); } catch { /* deja închisă */ }
+    } else this.onState?.('off');
+  }
+
+  // La închiderea paginii nu avem timp de așteptat: trimitem „B” și atât.
+  bye() {
+    if (this.rx && this.device?.gatt?.connected) this.send('B\n');
   }
 }
 
@@ -801,6 +810,9 @@ async function exportCsv() {
 }
 
 /* =========================== Conectare =========================== */
+
+// Pagina se închide: anunțăm sticla, ca LCD-ul să arate imediat „Deconectat”.
+addEventListener('pagehide', () => state.link?.bye?.());
 async function toggleConnect() {
   if (state.link) { state.link.disconnect(); return; }
   state.lostLink = null;
