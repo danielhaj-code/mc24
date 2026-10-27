@@ -5,7 +5,9 @@
  * 0 = senzor analogic rezistiv (ADC1, cu alimentare comutată pe GPIO)
  * 1 = celulă de sarcină cu HX711 (bit-bang pe 2 GPIO)
  */
-#define SENSOR_USE_HX711        0
+#ifndef SENSOR_USE_HX711
+#define SENSOR_USE_HX711        0   /* sau: make SENSOR=hx711 */
+#endif
 
 /* ---- Pini (STM32F429I-DISC1) ----
  * Aleși dintre pinii nefolosiți de LCD/SDRAM/giroscop/USB. Verifică în UM1670

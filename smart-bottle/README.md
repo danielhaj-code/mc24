@@ -36,7 +36,34 @@ Protocolul comun e descris în [PROTOCOL.md](PROTOCOL.md), iar lista de componen
 Pinii sunt aleși dintre cei nefolosiți de LCD, SDRAM și giroscop. **Verifică-i în UM1670 înainte de cablare.**
 Dacă schimbi un pin, schimbă-l în `app_config.h` și în CubeMX.
 
-## Firmware STM32 (STM32CubeIDE)
+## Firmware STM32 din linia de comandă (recomandat)
+
+`stm32/` e un proiect `make` complet, fără CubeIDE: `main.c` configurează ceasurile (180 MHz),
+ADC1, UART5 spre ESP32 și portul serial USB al plăcii (USART1, ST-LINK VCP) pentru jurnal.
+
+```
+cd stm32
+python tools/fetch_deps.py        # o singură dată: HAL, CMSIS, BSP-ul plăcii, fonturi (versiuni fixate)
+make -j8                          # build/smart-bottle.elf
+make flash                        # prin ST-LINK-ul de pe placă (OpenOCD); sau FLASHER=pyocd / cubeprog
+make monitor PORT=COM5            # jurnalul: [boot] ..., [tx] L,..., [rx] ...
+```
+
+Ai nevoie de `arm-none-eabi-gcc`, `make`, `openocd` (sau `pyocd`) și `pyserial`. Pașii de instalare și
+de verificare pe placă sunt în [`HANDOFF-STM32.md`](../HANDOFF-STM32.md), scris pentru o sesiune locală
+de Claude Code.
+
+**Test fără ESP32:** `make LINK=vcp flash` mută protocolul pe portul serial USB, iar
+`python tools/vcp_test.py COM5` verifică citirile, `R`, calibrarea și starea BLE.
+`make SENSOR=hx711` compilează varianta cu celulă de sarcină.
+
+## Firmware STM32 (STM32CubeIDE, alternativ)
+
+Dacă preferi CubeIDE: copiază în proiect doar modulele aplicației (`app`, `display`, `filter`, `link`,
+`protocol`, `sensor` și `app_config.h`); `main.c`, `stm32f4xx_it.c`, `stm32f4xx_hal_msp.c` și
+`system_stm32f4xx.c` le generează CubeMX. Din `main.h` ai nevoie de `LINK_HUART`, `LINK_INSTANCE`
+și `dbg_log` (sau definește-le în `main.h`-ul generat).
+
 
 1. **Proiect nou** pentru placa *STM32F429I-DISC1*. La întrebarea „Initialize all peripherals with their default mode?” răspunde **Nu**, ca să nu se genereze cod care intră în conflict cu BSP-ul.
 2. **Configurare în CubeMX:**
@@ -48,7 +75,7 @@ Dacă schimbi un pin, schimbă-l în `app_config.h` și în CubeMX.
    - Fișiere: `Drivers/BSP/STM32F429I-Discovery/` (`stm32f429i_discovery.c`, `_lcd.c`, `_sdram.c`), `Drivers/BSP/Components/ili9341/` și `Utilities/Fonts/`.
    - Adaugă căile în *Include paths*.
    - În `stm32f4xx_hal_conf.h` activează `HAL_LTDC_MODULE_ENABLED`, `HAL_DMA2D_MODULE_ENABLED`, `HAL_SDRAM_MODULE_ENABLED`, `HAL_SPI_MODULE_ENABLED` și `HAL_I2C_MODULE_ENABLED`.
-4. **Copiază** `stm32/Core/Inc/*` și `stm32/Core/Src/*` în proiect.
+4. **Copiază** modulele aplicației (vezi mai sus), nu și fișierele de pornire generate de CubeMX.
 5. **În `main.c`:**
    ```c
    /* USER CODE BEGIN Includes */

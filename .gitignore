@@ -11,3 +11,9 @@ Release/
 node_modules/
 .DS_Store
 Thumbs.db
+
+# Firmware STM32: driverele ST se descarcă cu tools/fetch_deps.py, build-ul e local
+smart-bottle/stm32/Drivers/
+smart-bottle/stm32/Utilities/
+smart-bottle/stm32/build/
+*.d
