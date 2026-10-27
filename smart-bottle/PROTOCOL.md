@@ -23,6 +23,7 @@ Nume advertising: `SmartBottle`. Mesajele încap în MTU-ul implicit (≤ 20 oct
 | `A,C` | Calibrare acceptată |
 | `E,C` | Calibrare respinsă (gol == plin) |
 | `P,<uptime_s>,<sursa_ok>` | Răspuns la ping, generat de **ESP32** (nu de STM32). `sursa_ok` = 1 dacă STM32 a trimis ceva în ultimele 3 s |
+| `K,<raw_gol>,<raw_plin>` | Calibrare setată din meniul tactil al **STM32**. Aplicația o salvează (rămâne sursa de adevăr) și răspunde cu `C,...` |
 
 Exemplu: `L,2310,64,1`
 
@@ -33,12 +34,23 @@ Exemplu: `L,2310,64,1`
 | `C,<raw_gol>,<raw_plin>` | Setează calibrarea folosită pentru procent și LCD |
 | `R` | Cere o citire imediată |
 | `P` | Ping (heartbeat). Răspunde ESP32, nu ajunge la STM32 |
+| `M,<ml>,<capacitate_ml>` | Volumul calculat de aplicație (doar din citiri stabile, calibrate); la schimbare, max. 1/s |
+| `T,<total_ml>,<obiectiv_ml>,<nr>` | Statisticile zilei: total băut, obiectiv, număr de înghițituri |
+| `U,<minute>` | Minute de la ultima înghițitură, `-1` = niciuna azi; cu `T` și la 60 s |
+| `W,<i>,<ml>` | Totalul zilei `i` (0 = acum 6 zile, 6 = azi); toate 7 la conectare, apoi doar `W,6` |
+
+`M`, `T`, `U`, `W` sunt doar pentru afișarea din meniul LCD; STM32 nu le folosește în calcule.
+Toate liniile, cu `\n`, au cel mult 20 de octeți.
 
 ## ESP32 → STM32 (intern)
 
 | Mesaj | Semnificație |
 |---|---|
-| `S,1` / `S,0` | Telefon conectat / deconectat |
+| `S,1` / `S,0` | Client BLE conectat / deconectat |
+| `H,<uptime_s>,<aplicatie>` | Heartbeat la 2 s. `aplicatie`: 0 = niciun client, 1 = client BLE care nu răspunde (nimic scris în 12 s), 2 = aplicație activă. STM32 consideră ESP32 căzut după 5 s fără `H`; scăderea lui `uptime_s` = ESP32 a repornit |
+
+Sincronizarea cu Supabase (evenimentele de consum) se face în loturi, cel mult o dată pe minut;
+legătura BLE rămâne în timp real.
 
 ## Heartbeat
 

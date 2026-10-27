@@ -187,7 +187,7 @@ function nudgeLoop() {
 }
 
 export function onEvent(ev) {
-  cloud.pushEvents([ev]).then(refreshBoard);
+  cloud.queueEvent(ev, refreshBoard);       // în lot, cel mult o dată pe minut
   habitsChanged();
   if (!agentOn()) return;
   const ctx = context();
@@ -401,6 +401,9 @@ export async function initHydro(api) {
     applyTier();
     cloud.pushEvents(app.state.events);     // ce s-a strâns offline
     refreshBoard();
+    // lotul în așteptare pleacă înainte ca pagina să fie închisă sau pusă în fundal
+    document.addEventListener('visibilitychange', () => { if (document.hidden) cloud.flush(); });
+    addEventListener('pagehide', () => cloud.flush());
   } else {
     $('nickname').textContent = 'offline';
     refreshBoard();

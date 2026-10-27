@@ -1,6 +1,7 @@
 import {
   SHAPES, volumeFraction, relativeHeight, mlFromRaw, levelColor, parseMessage,
   EventDetector, dailyTotals, dayKey, calibrationCommand, ABSENT_BELOW, LinkMonitor,
+  volumeLine, todayLine, sinceLine, weekLine,
 } from './logic.js';
 import { displayMl } from './agent.js';
 import { authGate } from './auth.js';
@@ -314,7 +315,11 @@ function onLine(line) {
   monitor.onMessage(msg, Date.now());   // orice mesaj dovedește că legătura trăiește
   if (!msg) return;
   if (msg.type === 'pong') { renderLinkHealth(); return; }
-  if (msg.type === 'calAck') { toast('Calibrare trimisă dispozitivului'); return; }
+  if (msg.type === 'calAck') {
+    if (lcd.quietAck) { lcd.quietAck = false; return; }   // confirmarea calibrării venite chiar de la sticlă
+    toast('Calibrare trimisă dispozitivului'); return;
+  }
+  if (msg.type === 'calFromDevice') { applyDeviceCalibration(msg); return; }
   if (msg.type === 'calErr') { toast('Dispozitivul a respins calibrarea (gol = plin)'); return; }
 
   const now = Date.now();
@@ -339,6 +344,7 @@ function onLine(line) {
   }
 
   if (!cfg.calibrated) return;   // fără calibrare, mL nu înseamnă nimic
+  pushVolume(state.ml, now);
   const ev = detector.feed(state.ml, now);
   if (ev) {
     db.add('events', ev);
@@ -347,6 +353,7 @@ function onLine(line) {
     toast(ev.type === 'drink' ? `Ai băut ${ev.ml} mL` : `Reumplere: +${ev.ml} mL`);
     haptic(ev.type === 'drink' ? [18, 60, 18] : 30);
     renderToday(); renderEvents(); renderWeekChart();
+    pushTodayStats();
     onEvent(ev);
   }
 }
@@ -373,11 +380,15 @@ function onState(s) {
     detector.reset(null);                            // linie de bază nouă după (re)conectare
     state.link.send(calibrationCommand(cfg));        // STM32 ține calibrarea doar în RAM
     state.link.send('R\n');
+    lcd.lastMl = null;
+    pushTodayStats({ week: true });                  // statistici pentru meniul de pe LCD
+    startLcdTimer();
     startHeartbeat();
     keepAwake(true);
     if (s === 'reconnected') toast('Reconectat');
   } else {
     stopHeartbeat();
+    stopLcdTimer();
     keepAwake(false);
     if (s === 'lost') state.lostLink = state.link;   // păstrat pentru butonul „Reconectează”
     state.connectedSince = null;
@@ -386,6 +397,68 @@ function onState(s) {
   }
   renderLinkHealth();
   onConnectionChange();
+}
+
+/* =========================== Statistici pentru LCD-ul STM32 =========================== */
+// STM32 nu ține istoric: aplicația îi trimite ce să afișeze în meniu (vezi logic.js: volumeLine etc.).
+// Scrierile trec prin coada lui BleDevice.send, deci liniile pleacă pe rând, fără să se piardă.
+const lcd = {
+  lastMl: null, lastMlAt: 0,   // ultimul „M” trimis
+  todayMl: null,               // ultimul total de azi trimis ca „W,6”
+  quietAck: false,             // nu anunța „A,C” pentru o calibrare venită de la sticlă
+  timer: null,
+};
+
+function sendToDevice(line) {
+  if (state.connected && state.link && !state.reconnecting) state.link.send(line);
+}
+
+function minutesSinceDrink(now = Date.now()) {
+  if (!state.lastDrinkTs || dayKey(state.lastDrinkTs) !== dayKey(now)) return -1;
+  return Math.max(0, Math.floor((now - state.lastDrinkTs) / 60000));
+}
+
+// Volumul curent: doar la schimbare și cel mult o dată pe secundă.
+function pushVolume(ml, now = Date.now()) {
+  if (!state.connected || ml === lcd.lastMl || now - lcd.lastMlAt < 1000) return;
+  lcd.lastMl = ml; lcd.lastMlAt = now;
+  sendToDevice(volumeLine(ml, cfg.capacity));
+}
+
+// „T” + „U”, apoi „W,6” dacă s-a schimbat totalul de azi; cu week = true, toate cele 7 zile.
+function pushTodayStats({ week = false } = {}) {
+  if (!state.connected) return;
+  const drinks = todayEvents().filter((e) => e.type === 'drink');
+  const total = drinks.reduce((s, e) => s + e.ml, 0);
+  sendToDevice(todayLine(total, cfg.goal, drinks.length));
+  sendToDevice(sinceLine(minutesSinceDrink()));
+  if (week) dailyTotals(state.events, 7).forEach((d, i) => sendToDevice(weekLine(i, d.ml)));
+  else if (total !== lcd.todayMl) sendToDevice(weekLine(6, total));
+  lcd.todayMl = total;
+}
+
+function startLcdTimer() {
+  clearInterval(lcd.timer);
+  lcd.timer = setInterval(() => sendToDevice(sinceLine(minutesSinceDrink())), 60000);
+}
+function stopLcdTimer() { clearInterval(lcd.timer); lcd.timer = null; }
+
+// „K,gol,plin”: utilizatorul a calibrat pe ecranul tactil. O tratăm exact ca butoanele
+// „Setează gol/plin” (salvare, UI, linie de bază nouă) și trimitem înapoi „C,gol,plin”.
+function applyDeviceCalibration({ empty, full }) {
+  if (empty === full) return;
+  cfg.empty = empty; cfg.full = full;
+  cfg.calibratedEmpty = cfg.calibratedFull = true;
+  lcd.quietAck = state.connected;
+  lcd.lastMl = null;                 // mL se recalculează cu noua calibrare
+  applyCalibration();                // salvează, resetează detectorul, trimite „C,...” dacă e conectat
+  if (state.raw !== null) {
+    state.absent = relativeHeight(state.raw, cfg) < ABSENT_BELOW;
+    state.h = Math.min(1, Math.max(0, relativeHeight(state.raw, cfg)));
+    state.ml = mlFromRaw(state.raw, cfg);
+  }
+  renderReadout();
+  toast('Calibrare primită de la sticlă');
 }
 
 /* =========================== Heartbeat: sănătatea legăturii =========================== */
@@ -605,6 +678,7 @@ function checkReminder() {
     currentDay = dayKey(Date.now());
     state.todayReadings = [];
     renderDayChart(); renderEvents(); renderWeekChart();
+    pushTodayStats({ week: true });                // zilele s-au decalat cu una
   }
   renderToday();   // actualizează „acum X min”
   if (!state.connected || state.reminded || !cfg.calibrated) return;
@@ -673,8 +747,8 @@ function bindSettings() {
     if (!Number.isFinite(v) || v < min || v > max) { e.target.value = cfg[key]; return; }
     cfg[key] = v; saveSettings();
     if (key === 'drinkMin') detector.drinkMin = v;
-    if (key === 'capacity') detector.reset(null);
-    if (key === 'goal') syncGoal(v);
+    if (key === 'capacity') { detector.reset(null); lcd.lastMl = null; }
+    if (key === 'goal') { syncGoal(v); pushTodayStats(); }
     renderToday(); renderWeekChart(); renderDayChart(); renderReadout();
   });
   num('capacity', 'capacity', 50, 5000);
@@ -707,6 +781,7 @@ function bindSettings() {
     await clearCloud();
     state.events = []; state.todayReadings = []; state.lastDrinkTs = null; state.lastLogged = null;
     renderToday(); renderEvents(); renderWeekChart(); renderDayChart();
+    pushTodayStats({ week: true });
     toast('Istoric șters');
   });
 }

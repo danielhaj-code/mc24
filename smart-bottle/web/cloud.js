@@ -3,6 +3,8 @@
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
 const SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const SYNC_EVERY_MS = 60000;   // lotul de evenimente pleacă cel mult o dată pe minut
+const SYNC_BATCH_MAX = 20;     // sau mai devreme, dacă s-au strâns atâtea
 
 export const cloud = {
   sb: null,
@@ -70,15 +72,42 @@ export const cloud = {
     return data;
   },
 
-  // Evenimentele au client_id stabil, deci retrimiterea nu dublează nimic.
+  // Evenimentele au client_id stabil, deci retrimiterea nu dublează nimic. Întoarce true la succes.
   async pushEvents(events) {
-    if (!this.ready || !events.length) return;
+    if (!this.ready || !events.length) return true;
     const rows = events.map((e) => ({
       ts: new Date(e.ts).toISOString(), kind: e.type, ml: Math.round(e.ml),
       client_id: `${e.ts}-${e.type}`,
     }));
     const { error } = await this.sb.from('drink_events').upsert(rows, { onConflict: 'user_id,client_id', ignoreDuplicates: true });
     if (error) console.warn('sincronizare', error.message);
+    return !error;
+  },
+
+  // Evenimentele noi nu pleacă la Supabase pe loc: se adună și se trimit într-un singur lot
+  // la SYNC_EVERY_MS sau când sunt SYNC_BATCH_MAX (și la ascunderea paginii). Bluetooth-ul și
+  // istoricul local rămân în timp real; doar cloud-ul primește mai rar.
+  queue: [],
+  flushTimer: null,
+  onFlushed: null,
+
+  queueEvent(ev, onFlushed) {
+    this.queue.push(ev);
+    if (onFlushed) this.onFlushed = onFlushed;
+    if (this.queue.length >= SYNC_BATCH_MAX) this.flush();
+    else if (!this.flushTimer) this.flushTimer = setTimeout(() => this.flush(), SYNC_EVERY_MS);
+  },
+
+  async flush() {
+    clearTimeout(this.flushTimer);
+    this.flushTimer = null;
+    if (!this.queue.length) return;
+    const batch = this.queue.splice(0);
+    if (await this.pushEvents(batch)) this.onFlushed?.();
+    else {                                   // eșec: le păstrăm pentru lotul următor
+      this.queue.unshift(...batch);
+      this.flushTimer = setTimeout(() => this.flush(), SYNC_EVERY_MS);
+    }
   },
 
   async checkout(tier) {

@@ -24,9 +24,20 @@ static int at_end(const char *p)
     return *p == '\0';
 }
 
+/* Citește exact n întregi de forma ",x,y,z" până la sfârșitul liniei. */
+static int parse_fields(const char *p, int32_t *v, int n)
+{
+    for (int i = 0; i < n; i++) {
+        if (*p++ != ',') return 0;
+        if (!parse_int(&p, &v[i])) return 0;
+    }
+    return at_end(p);
+}
+
 proto_cmd_t proto_parse(const char *line)
 {
-    proto_cmd_t cmd = { CMD_NONE, 0, 0 };
+    proto_cmd_t cmd = { CMD_NONE, 0, 0, 0 };
+    int32_t v[3] = { 0, 0, 0 };
     if (!line) return cmd;
     while (*line && isspace((unsigned char)*line)) line++;
     if (*line == '\0') return cmd;
@@ -50,8 +61,26 @@ proto_cmd_t proto_parse(const char *line)
         if (!parse_int(&p, &cmd.a)) break;
         if (at_end(p) && (cmd.a == 0 || cmd.a == 1)) cmd.type = CMD_LINK_STATE;
         break;
+    case 'M':
+        if (parse_fields(p, v, 2) && v[0] >= 0 && v[1] > 0) cmd.type = CMD_VOLUME;
+        break;
+    case 'T':
+        if (parse_fields(p, v, 3) && v[0] >= 0 && v[1] > 0 && v[2] >= 0) cmd.type = CMD_TODAY;
+        break;
+    case 'U':
+        if (parse_fields(p, v, 1) && v[0] >= -1) cmd.type = CMD_SINCE;
+        break;
+    case 'W':
+        if (parse_fields(p, v, 2) && v[0] >= 0 && v[0] <= 6 && v[1] >= 0) cmd.type = CMD_DAY;
+        break;
+    case 'H':
+        if (parse_fields(p, v, 2) && v[0] >= 0 && v[1] >= 0 && v[1] <= 2) cmd.type = CMD_HEARTBEAT;
+        break;
     default:
         break;
+    }
+    if (cmd.type == CMD_HEARTBEAT || cmd.type == CMD_VOLUME || cmd.type == CMD_TODAY || cmd.type == CMD_SINCE || cmd.type == CMD_DAY) {
+        cmd.a = v[0]; cmd.b = v[1]; cmd.c = v[2];
     }
     return cmd;
 }
@@ -59,6 +88,13 @@ proto_cmd_t proto_parse(const char *line)
 size_t proto_format_level(char *out, size_t cap, int32_t raw, int pct, int stable)
 {
     int n = snprintf(out, cap, "L,%ld,%d,%d\n", (long)raw, pct, stable ? 1 : 0);
+    if (n < 0 || (size_t)n >= cap) return 0;
+    return (size_t)n;
+}
+
+size_t proto_format_cal(char *out, size_t cap, int32_t empty, int32_t full)
+{
+    int n = snprintf(out, cap, "K,%ld,%ld\n", (long)empty, (long)full);
     if (n < 0 || (size_t)n >= cap) return 0;
     return (size_t)n;
 }

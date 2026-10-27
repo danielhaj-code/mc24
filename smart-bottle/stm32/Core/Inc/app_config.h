@@ -43,6 +43,14 @@
 #define CAL_DEFAULT_EMPTY       0
 #define CAL_DEFAULT_FULL        3000
 
+/* ---- Orientare LCD: 1 = rotit 180° (placa ținută cu USB-ul în jos) ---- */
+#ifndef LCD_ROTATE_180
+#define LCD_ROTATE_180          1
+#endif
+
+/* ---- Screensaver: ecran întunecat după atâta timp fără atingere (0 = dezactivat) ---- */
+#define SCREENSAVER_MS          120000
+
 /* ---- Praguri culoare LCD (aceleași ca în aplicație) ---- */
 #define LEVEL_OK_PCT            50    /* >= 50%  albastru (optim) */
 #define LEVEL_MID_PCT           20    /* >= 20%  galben (mediu), altfel roșu (scăzut) */

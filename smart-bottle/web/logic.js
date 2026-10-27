@@ -65,6 +65,12 @@ export function parseMessage(line) {
     if ([uptime, ok].some(Number.isNaN)) return null;
     return { type: 'pong', uptime, sourceOk: ok === 1 };
   }
+  if (p[0] === 'K' && p.length === 3) {
+    // calibrare făcută pe ecranul tactil al STM32
+    const [empty, full] = p.slice(1).map((v) => (/^-?\d+$/.test(v.trim()) ? Number(v) : NaN));
+    if ([empty, full].some(Number.isNaN)) return null;
+    return { type: 'calFromDevice', empty, full };
+  }
   if (t === 'A,C') return { type: 'calAck' };
   if (t === 'E,C') return { type: 'calErr' };
   return null;
@@ -130,6 +136,22 @@ export function dailyTotals(events, days, now = Date.now()) {
 export function calibrationCommand(cal) {
   return `C,${Math.round(cal.empty)},${Math.round(cal.full)}\n`;
 }
+
+// Statistici trimise către STM32 pentru meniul de pe LCD. Fiecare linie, cu tot cu '\n',
+// trebuie să încapă în 20 de octeți (un singur pachet BLE), deci numerele sunt limitate.
+const clampInt = (v, min, max) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
+};
+const STAT_MAX = 99999;
+export const volumeLine = (ml, capacity) => `M,${clampInt(ml, 0, STAT_MAX)},${clampInt(capacity, 0, STAT_MAX)}\n`;
+export const todayLine = (total, goal, count) =>
+  `T,${clampInt(total, 0, STAT_MAX)},${clampInt(goal, 0, STAT_MAX)},${clampInt(count, 0, 999)}\n`;
+// minute de la ultima înghițitură; -1 = niciuna azi
+export const sinceLine = (minutes) =>
+  `U,${minutes === null || minutes === undefined || minutes < 0 ? -1 : clampInt(minutes, 0, STAT_MAX)}\n`;
+// i = 0..6 (6 = azi, 0 = acum 6 zile)
+export const weekLine = (i, ml) => `W,${clampInt(i, 0, 6)},${clampInt(ml, 0, STAT_MAX)}\n`;
 
 // Supravegherea legăturii BLE (heartbeat). Logică pură: primește timpul, întoarce ce e de făcut.
 //  - trimite „P” periodic și imediat ce se face liniște;

@@ -36,11 +36,11 @@ BSP := Drivers/BSP/STM32F429I-Discovery
 APP_SRC := $(wildcard Core/Src/*.c)
 HAL_SRC := $(filter-out %_template.c,$(wildcard $(HAL)/Src/stm32f4xx_hal*.c)) $(HAL)/Src/stm32f4xx_ll_fmc.c
 BSP_SRC := $(BSP)/stm32f429i_discovery.c $(BSP)/stm32f429i_discovery_lcd.c $(BSP)/stm32f429i_discovery_sdram.c \
-           Drivers/BSP/Components/ili9341/ili9341.c
+           $(BSP)/stm32f429i_discovery_ts.c Drivers/BSP/Components/ili9341/ili9341.c            Drivers/BSP/Components/stmpe811/stmpe811.c
 ASM_SRC := startup_stm32f429xx.s
 
 INCLUDES := -ICore/Inc -I$(HAL)/Inc -I$(HAL)/Inc/Legacy -IDrivers/CMSIS/Device/ST/STM32F4xx/Include \
-            -IDrivers/CMSIS/Include -I$(BSP) -IDrivers/BSP/Components/ili9341
+            -IDrivers/CMSIS/Include -I$(BSP) -IDrivers/BSP/Components/ili9341 -IDrivers/BSP/Components/stmpe811
 
 # ---- opțiuni ----
 FW_VERSION := $(shell git describe --always --dirty 2>$(if $(filter Windows_NT,$(OS)),NUL,/dev/null) || echo dev)

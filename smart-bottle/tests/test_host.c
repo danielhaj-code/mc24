@@ -50,11 +50,30 @@ static void test_parse(void)
     c = proto_parse("");             CHECK(c.type == CMD_NONE);
     c = proto_parse("Z,1");          CHECK(c.type == CMD_INVALID);
 
+    c = proto_parse("M,450,750");    CHECK(c.type == CMD_VOLUME && c.a == 450 && c.b == 750);
+    c = proto_parse("M,450,0");      CHECK(c.type == CMD_INVALID);
+    c = proto_parse("T,1250,2000,7"); CHECK(c.type == CMD_TODAY && c.a == 1250 && c.b == 2000 && c.c == 7);
+    c = proto_parse("T,1250,2000");  CHECK(c.type == CMD_INVALID);
+    c = proto_parse("U,-1");         CHECK(c.type == CMD_SINCE && c.a == -1);
+    c = proto_parse("U,15");         CHECK(c.type == CMD_SINCE && c.a == 15);
+    c = proto_parse("U,-2");         CHECK(c.type == CMD_INVALID);
+    c = proto_parse("W,6,1800");     CHECK(c.type == CMD_DAY && c.a == 6 && c.b == 1800);
+    c = proto_parse("W,7,100");      CHECK(c.type == CMD_INVALID);
+    c = proto_parse("W,3,100,1");    CHECK(c.type == CMD_INVALID);
+    c = proto_parse("H,3600,1");     CHECK(c.type == CMD_HEARTBEAT && c.a == 3600 && c.b == 1);
+    c = proto_parse("H,12,2");       CHECK(c.type == CMD_HEARTBEAT && c.b == 2);
+    c = proto_parse("H,12,3");       CHECK(c.type == CMD_INVALID);
+    c = proto_parse("H,-1,0");       CHECK(c.type == CMD_INVALID);
+
     char out[24];
     size_t n = proto_format_level(out, sizeof out, 2310, 64, 1);
     CHECK(n == 12 && strcmp(out, "L,2310,64,1\n") == 0);
     n = proto_format_level(out, sizeof out, -8388608, 100, 0);
     CHECK(n == 17 && n <= 20);                                  /* cel mai lung caz HX711 încape în 20 B */
+    n = proto_format_cal(out, sizeof out, 120, 3050);
+    CHECK(n == 11 && strcmp(out, "K,120,3050\n") == 0);
+    n = proto_format_cal(out, sizeof out, -8388608, 8388607);
+    CHECK(n == 19 && n <= 20);
 }
 
 static int feed(line_asm_t *la, const char *s, char *got)

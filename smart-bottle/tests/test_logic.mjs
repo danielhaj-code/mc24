@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   volumeFraction, mlFromRaw, relativeHeight, parseMessage, EventDetector,
   dailyTotals, calibrationCommand, levelColor, ABSENT_BELOW,
+  volumeLine, todayLine, sinceLine, weekLine,
 } from '../web/logic.js';
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
@@ -67,5 +68,24 @@ assert.equal(calibrationCommand({ empty: 120.4, full: 3050 }), 'C,120,3050\n');
 assert.equal(levelColor(64), 'ok');
 assert.equal(levelColor(30), 'mid');
 assert.equal(levelColor(5), 'low');
+
+// statistici pentru LCD: fiecare linie, cu tot cu '\n', încape în 20 de octeți
+assert.equal(volumeLine(375.4, 750), 'M,375,750\n');
+assert.equal(volumeLine(-20, 750), 'M,0,750\n');
+assert.equal(todayLine(1250, 2000, 7), 'T,1250,2000,7\n');
+assert.equal(sinceLine(-1), 'U,-1\n');
+assert.equal(sinceLine(null), 'U,-1\n');
+assert.equal(sinceLine(42.9), 'U,43\n');
+assert.equal(weekLine(6, 1800), 'W,6,1800\n');
+assert.equal(weekLine(9, 10), 'W,6,10\n');
+for (const line of [volumeLine(1e9, 1e9), todayLine(1e9, 1e9, 1e9), sinceLine(1e9), weekLine(0, 1e9), volumeLine(NaN, 750)]) {
+  assert.ok(new TextEncoder().encode(line).length <= 20, line);
+}
+assert.equal(todayLine(1e9, 1e9, 1e9), 'T,99999,99999,999\n');
+assert.deepEqual(parseMessage('K,812,3010\n'), { type: 'calFromDevice', empty: 812, full: 3010 });
+assert.deepEqual(parseMessage('K,-8000,120000'), { type: 'calFromDevice', empty: -8000, full: 120000 });
+assert.equal(parseMessage('K,12'), null);
+assert.equal(parseMessage('K,1.5,2'), null);
+assert.equal(parseMessage('K,,2'), null);
 
 console.log('Toate testele logicii au trecut');

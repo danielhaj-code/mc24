@@ -56,6 +56,8 @@ class Board:
 
 
 def main():
+    # consola Windows (cp1252) nu poate afișa diacriticele
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     port = pick_port()
     print(f'Port: {port}')
     b = Board(port)

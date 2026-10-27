@@ -43,6 +43,8 @@
 #define BOOT_BTN_PIN  0        // butonul BOOT; în modul mock = o înghițitură
 
 #define SOURCE_TIMEOUT_MS  3000   // STM32 trimite o citire pe secundă
+#define HEARTBEAT_MS       2000   // H,<uptime_s>,<aplicație> spre STM32, ca să știe că ESP32 trăiește
+#define APP_ALIVE_MS       12000  // aplicația scrie cel puțin la 5 s (ping); 12 s fără nimic = nu răspunde
 #define APP_TIMEOUT_MS     20000  // aplicația face ping la 5 s; 20 s fără nimic = conexiune blocată
 
 static BLEServer *server = nullptr;
@@ -127,6 +129,8 @@ static void handleAppLine(const char *line) {
 #else
   Serial2.print(line);
   Serial2.write('\n');
+  Serial.print("[app] ");                   // jurnal pe USB: ce trimite aplicația spre STM32
+  Serial.println(line);
 #endif
 }
 
@@ -194,6 +198,12 @@ static void mockLoop() {
   mock.tick();
 }
 #else
+// 0 = niciun client, 1 = client BLE care nu răspunde (nu mai scrie), 2 = aplicație activă
+static int appState() {
+  if (!connected) return 0;
+  return millis() - lastAppRx < APP_ALIVE_MS ? 2 : 1;
+}
+
 // UART -> BLE, linie cu linie
 static void uartLoop() {
   while (Serial2.available()) {
@@ -213,6 +223,15 @@ static void uartLoop() {
     }
   }
 }
+
+// Test fără telefon: ce scrii în monitorul serial USB (ex. "R", "C,100,3000") ajunge la STM32.
+static void usbToUartLoop() {
+  while (Serial.available()) {
+    char c = (char)Serial.read();
+    if (c == '\r') continue;
+    Serial2.write(c);
+  }
+}
 #endif
 
 void loop() {
@@ -223,6 +242,15 @@ void loop() {
   mockLoop();
 #else
   uartLoop();
+  usbToUartLoop();
+
+  static uint32_t lastHeartbeat = 0;
+  if (millis() - lastHeartbeat >= HEARTBEAT_MS) {
+    lastHeartbeat = millis();
+    char hb[24];
+    int n = snprintf(hb, sizeof hb, "H,%lu,%d\n", (unsigned long)(millis() / 1000), appState());
+    Serial2.write((const uint8_t *)hb, n);
+  }
 #endif
 
   // Conexiune blocată: clientul a folosit heartbeat-ul, apoi a tăcut. O închidem ca să

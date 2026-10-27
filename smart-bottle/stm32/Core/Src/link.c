@@ -36,7 +36,7 @@ void link_on_rx_byte(void)
 
 proto_cmd_t link_poll(void)
 {
-    proto_cmd_t none = { CMD_NONE, 0, 0 };
+    proto_cmd_t none = { CMD_NONE, 0, 0, 0 };
     while (rx_tail != rx_head) {
         char c = (char)rx_ring[rx_tail];
         rx_tail = (rx_tail + 1) & (RX_RING_SIZE - 1);

@@ -54,6 +54,8 @@ def fetch(repo, sha, dest, sparse=None):
 
 
 def main():
+    # consola Windows (cp1252) nu poate afișa diacriticele
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     if os.path.isdir(DRV) and '--force' not in sys.argv:
         print('Drivers/ există deja. Folosește --force ca să-l descarci din nou.')
         return
