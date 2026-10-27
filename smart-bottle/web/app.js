@@ -809,6 +809,22 @@ async function exportCsv() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+// Evenimente din cloud care lipsesc local (alt dispozitiv sau altă adresă a site-ului):
+// le adăugăm, ca istoricul, graficele și meniul de pe LCD să arate aceleași date peste tot.
+// Cheia e aceeași ca la urcare (client_id = `${ts}-${type}`), deci nimic nu se dublează.
+async function mergeCloudEvents(rows) {
+  const have = new Set(state.events.map((e) => `${e.ts}-${e.type}`));
+  const fresh = rows.filter((e) => !have.has(`${e.ts}-${e.type}`));
+  if (!fresh.length) return 0;
+  for (const ev of fresh) { await db.add('events', ev); state.events.push(ev); }
+  state.events.sort((a, b) => a.ts - b.ts);
+  const drinks = state.events.filter((e) => e.type === 'drink');
+  state.lastDrinkTs = drinks.length ? drinks.at(-1).ts : null;
+  renderToday(); renderEvents(); renderWeekChart();
+  pushTodayStats({ week: true });
+  return fresh.length;
+}
+
 /* =========================== Conectare =========================== */
 
 // Pagina se închide: anunțăm sticla, ca LCD-ul să arate imediat „Deconectat”.
@@ -934,6 +950,7 @@ async function init() {
   initHydro({
     cfg, state, saveSettings, toast, todayEvents, notify: systemNotify,
     loadLocalEvents: (since) => db.since('events', since),
+    mergeCloudEvents,
     onTierChange: () => { renderReadout(); renderWeekChart(); },
   });
 

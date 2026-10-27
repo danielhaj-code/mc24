@@ -84,6 +84,15 @@ export const cloud = {
     return !error;
   },
 
+  // Evenimentele proprii de la sinceMs încoace, în forma folosită local ({ ts, type, ml }).
+  async pullEvents(sinceMs) {
+    if (!this.ready) return [];
+    const { data, error } = await this.sb.from('drink_events').select('ts, kind, ml')
+      .gte('ts', new Date(sinceMs).toISOString()).order('ts');
+    if (error) { console.warn('descărcare', error.message); return []; }
+    return data.map((r) => ({ ts: Date.parse(r.ts), type: r.kind, ml: r.ml }));
+  },
+
   // Evenimentele noi nu pleacă la Supabase pe loc: se adună și se trimit într-un singur lot
   // la SYNC_EVERY_MS sau când sunt SYNC_BATCH_MAX (și la ascunderea paginii). Bluetooth-ul și
   // istoricul local rămân în timp real; doar cloud-ul primește mai rar.

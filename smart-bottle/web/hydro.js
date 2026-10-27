@@ -21,7 +21,7 @@ export function icon(name, cls = 'i') {
   svg.append(use);
   return svg;
 }
-let app;                       // { cfg, state, saveSettings, toast, todayEvents, onTierChange, notify }
+let app;                       // { cfg, state, saveSettings, toast, todayEvents, onTierChange, notify, mergeCloudEvents }
 const chat = [];               // { role: 'user'|'agent', text }
 let lastNudge = Date.now();
 let speech = { key: '', text: '' };
@@ -400,6 +400,10 @@ export async function initHydro(api) {
     $('nickname').textContent = cloud.profile.nickname;
     applyTier();
     cloud.pushEvents(app.state.events);     // ce s-a strâns offline
+    // și invers: ce s-a înregistrat pe alt dispozitiv în ultimele 8 zile (graficul are 7)
+    const since = new Date().setHours(0, 0, 0, 0) - 7 * 86400000;
+    cloud.pullEvents(since).then((rows) => app.mergeCloudEvents?.(rows))
+      .then((n) => { if (n) app.toast(`Istoric sincronizat: ${n} evenimente din cloud`); });
     refreshBoard();
     // lotul în așteptare pleacă înainte ca pagina să fie închisă sau pusă în fundal
     document.addEventListener('visibilitychange', () => { if (document.hidden) cloud.flush(); });
