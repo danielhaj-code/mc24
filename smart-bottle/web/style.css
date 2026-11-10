@@ -808,6 +808,15 @@ html { -webkit-tap-highlight-color: transparent; scroll-padding-top: 84px; }
   .blob { animation: none; }
 }
 
+/* Telefoane: backdrop-filter peste fundalul animat se recalculează la fiecare cadru de derulare
+   și blochează scroll-ul. Pe ecranele tactile: suprafețe aproape opace, fundal static. */
+@media (hover: none) and (pointer: coarse) {
+  :root { --surface: rgba(247, 249, 252, .96); }
+  *, *::before, *::after, dialog.sheet::backdrop { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  .topbar { background: rgba(246, 248, 251, .97); }
+  .blob { animation: none; will-change: auto; filter: blur(60px); }
+}
+
 /* =========================== Autentificare =========================== */
 body[data-auth="out"] .layout,
 body[data-auth="out"] .notices,

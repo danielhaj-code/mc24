@@ -517,7 +517,7 @@ const OUTLINES = {
   cone: 'M28,40 H172 L150,298 Q149,305 142,305 H58 Q51,305 50,298 Z',
   neck: 'M73,40 H127 V92 Q160,98 160,122 V293 Q160,305 148,305 H52 Q40,305 40,293 V122 Q40,98 73,92 Z',
 };
-const anim = { shown: 0, phase: 0 };
+const anim = { shown: 0, phase: 0, fill: '', visible: true, running: false };
 
 function setBottleShape() {
   const d = OUTLINES[cfg.shape] || OUTLINES.cylinder;
@@ -541,8 +541,25 @@ function frame() {
   const amp = anim.shown > 0.01 ? 4 : 0;
   $('wave1').setAttribute('d', wavePath(y, amp, anim.phase, 0.06));
   $('wave2').setAttribute('d', wavePath(y - 2, amp * 0.8, -anim.phase * 0.8 + 1.5, 0.045));
-  $('bottleWell').style.setProperty('--fill', anim.shown.toFixed(3));
+  const fill = anim.shown.toFixed(3);
+  if (fill !== anim.fill) {                        // haloul are blur: îl atingem doar la schimbare
+    anim.fill = fill;
+    $('bottleWell').style.setProperty('--fill', fill);
+  }
+  if (anim.visible && document.visibilityState === 'visible') requestAnimationFrame(frame);
+  else anim.running = false;
+}
+
+// Valurile rulează doar cât sticla se vede: pe telefon bucla continuă încetinea derularea.
+function startAnim() {
+  if (anim.running || !anim.visible || document.visibilityState !== 'visible') return;
+  anim.running = true;
   requestAnimationFrame(frame);
+}
+function watchBottle() {
+  new IntersectionObserver(([en]) => { anim.visible = en.isIntersecting; startAnim(); })
+    .observe($('bottleWell'));
+  document.addEventListener('visibilitychange', startAnim);
 }
 
 function renderReadout() {
@@ -917,7 +934,8 @@ async function init() {
   renderSettings();
   setBottleShape();
   renderReadout();
-  requestAnimationFrame(frame);
+  watchBottle();
+  startAnim();
 
   $('btnConnect').addEventListener('click', toggleConnect);
   $('btnDemo').addEventListener('click', startDemo);
