@@ -7,6 +7,7 @@
 /* Cod pur C (fără HAL) — testabil pe PC. Vezi PROTOCOL.md. */
 
 #define PROTO_LINE_MAX 32
+#define HIST_POINTS    60   /* istoricul nivelului: un punct la 10 s, ultimele 10 min */
 
 typedef enum {
     CMD_NONE = 0,
@@ -18,6 +19,7 @@ typedef enum {
     CMD_SINCE,       /* U,<minute de la ultima înghițitură | -1> */
     CMD_DAY,         /* W,<0..6>,<ml>  (6 = azi) */
     CMD_HEARTBEAT,   /* H,<uptime_s>,<aplicație 0|1|2>  (de la ESP32, la 2 s) */
+    CMD_HISTORY,     /* G,<0..59>,<procent | -1>  (de la ESP32; 59 = cel mai recent) */
     CMD_INVALID
 } proto_cmd_type_t;
 

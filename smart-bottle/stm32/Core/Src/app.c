@@ -1,7 +1,7 @@
 #include "app.h"
 #include "app_config.h"
 #include "main.h"
-#include "stm32f429i_discovery.h"   /* LED3 (PG13) / LED4 (PG14) */
+#include "stm32f429i_discovery.h"   /* LED3 (PG13) / LED4 (PG14), butonul USER (PA0) */
 #include "filter.h"
 #include "protocol.h"
 #include "sensor.h"
@@ -14,6 +14,7 @@
 static ui_state_t u;                 /* tot ce afișează meniul */
 static struct {
     uint32_t last_read_ms, last_touch_ms;
+    uint8_t btn_hist;                /* ultimele eșantioane ale butonului USER, câte unul la 20 ms */
     stability_t stab;
 } s;
 
@@ -126,6 +127,10 @@ static void handle(const proto_cmd_t *c)
         if (c->a == 0) u.has_week = 1;    /* aplicația trimite W,0..6 la conectare */
         u.last_app_ms = HAL_GetTick();
         break;
+    case CMD_HISTORY:
+        u.hist[c->a] = (int8_t)c->b;
+        u.has_hist = 1;
+        break;
     case CMD_HEARTBEAT:
         /* uptime mai mic decât data trecută = ESP32 a repornit */
         if (u.esp_last_ms && (uint32_t)c->a < u.esp_uptime) u.esp_restarts++;
@@ -167,6 +172,7 @@ void app_init(void)
 
     BSP_LED_Init(LED3);
     BSP_LED_Init(LED4);
+    BSP_PB_Init(BUTTON_KEY, BUTTON_MODE_GPIO);   /* B1 albastru, activ pe 1 (pull-down pe placă) */
     display_init();
     sensor_init();
     link_init();
@@ -195,6 +201,9 @@ void app_loop(void)
         case UI_EV_TOGGLE_MOCK: toggle_mock(); break;
         default: break;
         }
+        /* antirebond: o apăsare = 2 eșantioane apăsat (40 ms) după 2 eliberat */
+        s.btn_hist = (uint8_t)((s.btn_hist << 1) | (BSP_PB_GetState(BUTTON_KEY) != 0));
+        if ((s.btn_hist & 0x0F) == 0x03) display_next_page();
     }
 
     display_update(&u);

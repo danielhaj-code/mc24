@@ -76,10 +76,15 @@ proto_cmd_t proto_parse(const char *line)
     case 'H':
         if (parse_fields(p, v, 2) && v[0] >= 0 && v[1] >= 0 && v[1] <= 2) cmd.type = CMD_HEARTBEAT;
         break;
+    case 'G':
+        if (parse_fields(p, v, 2) && v[0] >= 0 && v[0] < HIST_POINTS && v[1] >= -1 && v[1] <= 100)
+            cmd.type = CMD_HISTORY;
+        break;
     default:
         break;
     }
-    if (cmd.type == CMD_HEARTBEAT || cmd.type == CMD_VOLUME || cmd.type == CMD_TODAY || cmd.type == CMD_SINCE || cmd.type == CMD_DAY) {
+    if (cmd.type == CMD_HEARTBEAT || cmd.type == CMD_VOLUME || cmd.type == CMD_TODAY || cmd.type == CMD_SINCE || cmd.type == CMD_DAY
+        || cmd.type == CMD_HISTORY) {
         cmd.a = v[0]; cmd.b = v[1]; cmd.c = v[2];
     }
     return cmd;

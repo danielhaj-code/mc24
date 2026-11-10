@@ -2,6 +2,7 @@
 #define DISPLAY_H
 
 #include <stdint.h>
+#include "protocol.h"   /* HIST_POINTS */
 
 /* Tot ce afișează meniul. Câmpurile has_* spun dacă aplicația a trimis deja datele. */
 typedef struct {
@@ -20,6 +21,9 @@ typedef struct {
     int since_min;              /* -1 = nicio înghițitură azi, -2 = necunoscut */
     uint32_t since_at_ms;       /* când a venit since_min */
     int has_week, week[7];      /* week[6] = azi */
+    /* istoricul nivelului, ținut de ESP32 (G,<i>,<procent>) */
+    int has_hist;
+    int8_t hist[HIST_POINTS];   /* procent 0..100, -1 = fără citiri în cele 10 s; [59] = acum */
     /* heartbeat ESP32 (H,<uptime_s>,<aplicație> la 2 s) */
     uint32_t esp_last_ms;       /* 0 = n-a venit niciodată */
     uint32_t esp_uptime;
@@ -35,6 +39,8 @@ void display_init(void);
 void display_update(const ui_state_t *st);
 /* De apelat des (~20 ms): schimbă pagina la atingerea barei de jos; întoarce butoanele apăsate. */
 ui_event_t display_poll_touch(const ui_state_t *st);
+/* Butonul albastru USER: trece la pagina următoare (după ultima revine la prima). */
+void display_next_page(void);
 /* Mesaj scurt pe pagina de calibrare (ok = 1 verde, 0 roșu). */
 void display_notice(const char *msg, int ok);
 

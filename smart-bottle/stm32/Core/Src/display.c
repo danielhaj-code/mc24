@@ -17,8 +17,8 @@
  * alese din bara de jos. Tot ce se schimbă des e compus întâi în SDRAM (gfx_begin/gfx_end)
  * și copiat pe ecran dintr-o dată, ca să nu pâlpâie. */
 
-enum { PAGE_HOME, PAGE_TODAY, PAGE_CAL, PAGE_INFO, PAGE_COUNT };
-static const char *const TAB_NAMES[PAGE_COUNT] = { "Acasă", "Azi", "Calib.", "Info" };
+enum { PAGE_HOME, PAGE_HIST, PAGE_CAL, PAGE_INFO, PAGE_COUNT };
+static const char *const TAB_NAMES[PAGE_COUNT] = { "Acasă", "Istoric", "Calib.", "Info" };
 
 #define TAB_Y      276
 #define TAB_H      38
@@ -163,7 +163,11 @@ static void draw_water(int x, int bottom, int w, int fill, int r)
 
 static void home_bottle(const ui_state_t *st)
 {
-    int pct = st->sensor_ok ? shown_pct(st) : 0;
+    /* sticla urmează citirea locală, la fiecare secundă; mL de la aplicație vin doar la citiri
+       stabile cu sticla pe senzor, așa că desenul rămânea înghețat pe ultima valoare */
+    int pct = st->sensor_ok ? st->pct : 0;
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
     if (pct == bottle_pct) return;
     bottle_pct = pct;
 
@@ -196,84 +200,61 @@ static void home_dynamic(const ui_state_t *st)
     gfx_text_box(108, 226, 116, &font_mono, C_MUTED, C_CARD, 0, buf);
 }
 
-/* ---------------- Azi ---------------- */
+/* ---------------- Istoric ---------------- */
 
-static int since_now(const ui_state_t *st)
+/* graficul nivelului din ultimele 10 minute; punctele vin de la ESP32, câte unul la 10 s */
+#define HG_X     44                       /* stânga graficului; în stânga, etichetele axei */
+#define HG_TOP   92
+#define HG_BOT   228
+#define HG_STEP  3                        /* 60 de puncte × 3 px = 180 px */
+
+static void hist_static(void)
 {
-    if (st->since_min < 0) return st->since_min;
-    return st->since_min + (int)((HAL_GetTick() - st->since_at_ms) / 60000u);
+    gfx_card(12, 52, 216, 212, C_CARD);
 }
 
-static void today_static(void)
-{
-    gfx_card(12, 52, 216, 108, C_CARD);
-    gfx_card(12, 168, 216, 96, C_CARD);
-}
-
-static void today_line(const ui_state_t *st)
-{
-    char buf[64], ago[32];
-    int m = since_now(st);
-    if (m == -2)     snprintf(ago, sizeof ago, "–");
-    else if (m < 0)  snprintf(ago, sizeof ago, "niciuna azi");
-    else if (m < 1)  snprintf(ago, sizeof ago, "acum");
-    else if (m < 60) snprintf(ago, sizeof ago, "acum %d min", m);
-    else             snprintf(ago, sizeof ago, "acum %d h %d min", m / 60, m % 60);
-    snprintf(buf, sizeof buf, "%d înghițituri · %s", st->sips, ago);
-    gfx_text_box(26, 176, 194, &font_small, C_MUTED, C_CARD, 0, buf);
-}
-
-static void today_dynamic(const ui_state_t *st)
+static void hist_dynamic(const ui_state_t *st)
 {
     char buf[24];
-    int own;
+    int own = gfx_begin(20, 58, 200, 200);
+    gfx_fill(20, 58, 200, 200, C_CARD);
+    gfx_text(28, 62, &font_small, C_MUTED, "Nivel · ultimele 10 min");
 
-    /* cardul de sus */
-    own = gfx_begin(20, 58, 200, 96);
-    gfx_fill(20, 58, 200, 96, C_CARD);
-    if (!st->has_today) {
-        gfx_text_box(20, 92, 200, &font_body, C_MUTED, C_CARD, 1, "Fără date de la aplicație");
-    } else {
-        gfx_text(28, 62, &font_small, C_MUTED, "Azi");
-        snprintf(buf, sizeof buf, "%d", st->total);
-        int w = gfx_text(24, 76, &font_num, C_TEXT, buf);
-        snprintf(buf, sizeof buf, "din %d mL", st->goal);
-        gfx_text(24 + w + 6, 98, &font_body, C_MUTED, buf);
-        gfx_round_rect(28, 134, 184, 10, 5, C_TRACK);
-        int p = st->goal > 0 ? st->total * 184 / st->goal : 0;
-        if (p > 184) p = 184;
-        if (p > 0) gfx_round_rect(28, 134, p < 10 ? 10 : p, 10, 5, st->total >= st->goal ? C_ACCENT : C_OK);
+    if (!st->has_hist) {
+        gfx_text_box(20, 150, 200, &font_small, C_MUTED, C_CARD, 1, "Aștept istoricul de la ESP32");
+        if (own) gfx_end();
+        return;
     }
-    if (own) gfx_end();
 
-    /* cardul de jos: rândul cu înghițiturile + ultimele 7 zile */
-    own = gfx_begin(20, 174, 200, 88);
-    gfx_fill(20, 174, 200, 88, C_CARD);
-    if (!st->has_today) {
-        gfx_text_box(20, 206, 200, &font_small, C_MUTED, C_CARD, 1, "Conectează telefonul");
-    } else {
-        today_line(st);
-        const int top = 198, bottom = 240, bw = 16, gap = 12, x0 = 28;
-        if (!st->has_week) {
-            gfx_text_box(20, 210, 200, &font_small, C_MUTED, C_CARD, 1, "Istoricul vine de la aplicație");
-        } else {
-            int scale = st->goal;
-            for (int i = 0; i < 7; i++) if (st->week[i] > scale) scale = st->week[i];
-            if (scale <= 0) scale = 1;
-            for (int i = 0; i < 7; i++) {
-                int h = st->week[i] * (bottom - top) / scale;
-                int x = x0 + i * (bw + gap);
-                gfx_round_rect(x, top, bw, bottom - top, 4, C_TRACK);
-                if (h > 0) gfx_round_rect(x, bottom - h, bw, h, h < 8 ? h / 2 : 4,
-                                          st->week[i] >= st->goal ? C_ACCENT : C_OK);
-            }
-            int gy = bottom - st->goal * (bottom - top) / scale;
-            for (int x = x0 - 4; x < x0 + 7 * (bw + gap) - gap + 4; x += 6) gfx_fill(x, gy, 3, 1, C_TEXT);
-            gfx_text(x0, 243, &font_small, C_MUTED, "7 zile");
-            int tw = gfx_text_width(&font_small, "azi");
-            gfx_text(x0 + 6 * (bw + gap) + bw - tw, 243, &font_small, C_MUTED, "azi");
-        }
+    int last = -1;
+    for (int i = HIST_POINTS - 1; i >= 0 && last < 0; i--) last = st->hist[i];
+    snprintf(buf, sizeof buf, last < 0 ? "–" : "%d%%", last);
+    gfx_text_box(140, 62, 76, &font_body, C_TEXT, C_CARD, 2, buf);
+
+    /* axa: 100 / 50 / 0 %, linii punctate */
+    static const int marks[3] = { 100, 50, 0 };
+    for (int k = 0; k < 3; k++) {
+        int y = HG_BOT - marks[k] * (HG_BOT - HG_TOP) / 100;
+        snprintf(buf, sizeof buf, "%d", marks[k]);
+        int tw = gfx_text_width(&font_small, buf);
+        gfx_text(HG_X - 6 - tw, y - 7, &font_small, C_MUTED, buf);
+        for (int x = HG_X; x < HG_X + HIST_POINTS * HG_STEP; x += 6) gfx_fill(x, y, 3, 1, C_TRACK);
     }
+
+    /* un stâlp la 10 s; intervalele fără citiri rămân goale */
+    for (int i = 0; i < HIST_POINTS; i++) {
+        int v = st->hist[i];
+        if (v < 0) continue;
+        int h = v * (HG_BOT - HG_TOP) / 100;
+        if (h < 1) h = 1;
+        gfx_fill(HG_X + i * HG_STEP, HG_BOT - h, HG_STEP - 1, h, i == HIST_POINTS - 1 ? C_ACCENT : C_OK);
+    }
+
+    gfx_text(HG_X, HG_BOT + 6, &font_small, C_MUTED, "-10 min");
+    int tw = gfx_text_width(&font_small, "-5");
+    gfx_text(HG_X + HIST_POINTS * HG_STEP / 2 - tw / 2, HG_BOT + 6, &font_small, C_MUTED, "-5");
+    tw = gfx_text_width(&font_small, "acum");
+    gfx_text(HG_X + HIST_POINTS * HG_STEP - tw, HG_BOT + 6, &font_small, C_MUTED, "acum");
     if (own) gfx_end();
 }
 
@@ -495,7 +476,7 @@ void display_update(const ui_state_t *st)
         gfx_text(16, 12, &font_title, C_TEXT, "Smart Bottle");
         switch (page) {
         case PAGE_HOME:  home_static();  break;
-        case PAGE_TODAY: today_static(); break;
+        case PAGE_HIST:  hist_static();  break;
         case PAGE_CAL:   cal_static();   break;
         default:         info_static();  break;
         }
@@ -517,9 +498,8 @@ void display_update(const ui_state_t *st)
     case PAGE_HOME:
         if (force || changed) home_dynamic(st);
         break;
-    case PAGE_TODAY:
-        if (force || changed) today_dynamic(st);
-        else if (tick && st->has_today && now_sec % 30 == 0) today_line(st);
+    case PAGE_HIST:
+        if (force || changed) hist_dynamic(st);
         break;
     case PAGE_CAL:
         if (force || changed) cal_dynamic(st);
@@ -543,6 +523,17 @@ void display_notice(const char *msg, int ok)
     notice.until = HAL_GetTick() + NOTICE_MS;
     notice.active = 1;
     drawn_page = -1;                      /* redesenează pagina la următorul update */
+}
+
+void display_next_page(void)
+{
+    last_touch_ms = HAL_GetTick();
+    if (saver) {                          /* ca la atingere: prima apăsare doar trezește ecranul */
+        saver = 0;
+        drawn_page = -1;
+        return;
+    }
+    page = (page + 1) % PAGE_COUNT;
 }
 
 ui_event_t display_poll_touch(const ui_state_t *st)

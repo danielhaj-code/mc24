@@ -64,6 +64,10 @@ static void test_parse(void)
     c = proto_parse("H,12,2");       CHECK(c.type == CMD_HEARTBEAT && c.b == 2);
     c = proto_parse("H,12,3");       CHECK(c.type == CMD_INVALID);
     c = proto_parse("H,-1,0");       CHECK(c.type == CMD_INVALID);
+    c = proto_parse("G,59,73");      CHECK(c.type == CMD_HISTORY && c.a == 59 && c.b == 73);
+    c = proto_parse("G,0,-1");       CHECK(c.type == CMD_HISTORY && c.a == 0 && c.b == -1);
+    c = proto_parse("G,60,10");      CHECK(c.type == CMD_INVALID);
+    c = proto_parse("G,3,101");      CHECK(c.type == CMD_INVALID);
 
     char out[24];
     size_t n = proto_format_level(out, sizeof out, 2310, 64, 1);

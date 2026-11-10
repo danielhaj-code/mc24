@@ -48,6 +48,7 @@ Toate liniile, cu `\n`, au cel mult 20 de octeți.
 |---|---|
 | `S,1` / `S,0` | Client BLE conectat / deconectat |
 | `H,<uptime_s>,<aplicatie>` | Heartbeat la 2 s. `aplicatie`: 0 = niciun client, 1 = client BLE care nu răspunde (nimic scris în 12 s), 2 = aplicație activă. STM32 consideră ESP32 căzut după 5 s fără `H`; scăderea lui `uptime_s` = ESP32 a repornit |
+| `G,<i>,<procent>` | Istoricul nivelului pentru graficul de pe LCD: 60 de puncte, câte unul la 10 s (ultimele 10 min), `i` = 0..59 (59 = cel mai recent), `procent` = media citirilor `L` din pas (cele stabile, dacă există), `-1` = fără citiri. ESP32 ține seria în RAM și o retrimite întreagă la fiecare 10 s și după o repornire a STM32 |
 
 Sincronizarea cu Supabase (evenimentele de consum) se face în loturi, cel mult o dată pe minut;
 legătura BLE rămâne în timp real.

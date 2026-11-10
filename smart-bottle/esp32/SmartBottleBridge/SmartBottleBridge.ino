@@ -16,6 +16,10 @@
  * conexiunea e considerată blocată: ESP32 o închide și reîncepe advertising-ul, ca aplicația să se
  * poată reconecta curat.
  *
+ * Istoric: din citirile L,... ale STM32, ESP32 ține media pe fiecare 10 s din ultimele 10 minute (în RAM)
+ * și o retrimite STM32-ului la fiecare pas ca G,<i>,<procent>, pentru graficul de pe LCD.
+ * Supraviețuiește unei reporniri a STM32, nu și uneia a ESP32.
+ *
  * MOCK_STM32 = 1: fără STM32. ESP32 generează singur citirile (MockStm32.h), ca să poți
  * testa BLE-ul și aplicația înainte de cablare. Citirea reală a senzorului rămâne pe STM32;
  * pune 0 când placa e legată și totul trece din nou prin UART, neschimbat.
@@ -46,6 +50,8 @@
 #define HEARTBEAT_MS       2000   // H,<uptime_s>,<aplicație> spre STM32, ca să știe că ESP32 trăiește
 #define APP_ALIVE_MS       12000  // aplicația scrie cel puțin la 5 s (ping); 12 s fără nimic = nu răspunde
 #define APP_TIMEOUT_MS     20000  // aplicația face ping la 5 s; 20 s fără nimic = conexiune blocată
+#define HIST_POINTS        60     // un punct la 10 s, ultimele 10 min (la fel ca pe STM32)
+#define HIST_STEP_MS       10000
 
 static BLEServer *server = nullptr;
 static BLECharacteristic *txChar = nullptr;
@@ -76,6 +82,7 @@ static MockStm32 mock(mockSink);
 static char lineBuf[LINE_MAX];
 static size_t lineLen = 0;
 static bool lineOverflow = false;
+static int8_t hist[HIST_POINTS];           // procent 0..100, -1 = fără citiri; [59] = cel mai recent
 #endif
 
 class ServerCallbacks : public BLEServerCallbacks {
@@ -153,6 +160,7 @@ void setup() {
   mock.begin();
 #else
   Serial2.begin(UART_BAUD, SERIAL_8N1, UART_RX_PIN, UART_TX_PIN);
+  memset(hist, -1, sizeof hist);
 #endif
 
   BLEDevice::init(DEVICE_NAME);
@@ -214,12 +222,49 @@ static int appState() {
 }
 
 // UART -> BLE, linie cu linie
+// ---- Istoricul nivelului ----
+static long minSumStable = 0, minSumAll = 0;
+static int minCntStable = 0, minCntAll = 0;
+static bool histSendNow = false;
+
+// O citire de la STM32. Pasul de 10 s folosește citirile stabile; dacă n-a fost niciuna
+// (sticla mișcată tot timpul), media tuturor.
+static void histAddLine(const char *line) {
+  long raw, pct, stable;
+  if (sscanf(line, "L,%ld,%ld,%ld", &raw, &pct, &stable) != 3 || pct < 0 || pct > 100) return;
+  minSumAll += pct; minCntAll++;
+  if (stable) { minSumStable += pct; minCntStable++; }
+}
+
+static void histCloseStep() {
+  memmove(hist, hist + 1, HIST_POINTS - 1);
+  int v = minCntStable ? (int)(minSumStable / minCntStable) : minCntAll ? (int)(minSumAll / minCntAll) : -1;
+  hist[HIST_POINTS - 1] = (int8_t)v;
+  minSumStable = minSumAll = 0;
+  minCntStable = minCntAll = 0;
+  Serial.printf("[istoric] punct nou: %d%%\n", v);
+}
+
+// Toată seria spre STM32, rar și pe rând: STM32 are un buffer de recepție de 128 de octeți.
+static void histSend() {
+  char buf[16];
+  for (int i = 0; i < HIST_POINTS; i++) {
+    int n = snprintf(buf, sizeof buf, "G,%d,%d\n", i, hist[i]);
+    Serial2.write((const uint8_t *)buf, n);
+    delay(3);
+  }
+}
+
 static void uartLoop() {
   while (Serial2.available()) {
     char c = (char)Serial2.read();
     if (c == '\n') {
       if (!lineOverflow && lineLen > 0) {
+        // STM32 a tăcut: probabil a repornit și a pierdut graficul
+        if (lastSourceRx != 0 && millis() - lastSourceRx > SOURCE_TIMEOUT_MS) histSendNow = true;
         lastSourceRx = millis();
+        lineBuf[lineLen] = '\0';
+        histAddLine(lineBuf);
         lineBuf[lineLen++] = '\n';
         notifyLine(lineBuf, lineLen);
         Serial.write((const uint8_t *)lineBuf, lineLen);
@@ -259,6 +304,17 @@ void loop() {
     char hb[24];
     int n = snprintf(hb, sizeof hb, "H,%lu,%d\n", (unsigned long)(millis() / 1000), appState());
     Serial2.write((const uint8_t *)hb, n);
+  }
+
+  static uint32_t lastHistStep = 0;
+  if (millis() - lastHistStep >= HIST_STEP_MS) {
+    lastHistStep = millis();
+    histCloseStep();
+    histSendNow = true;
+  }
+  if (histSendNow) {
+    histSendNow = false;
+    histSend();
   }
 #endif
 
