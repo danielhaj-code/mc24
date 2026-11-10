@@ -112,7 +112,13 @@ body {
 }
 .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #B9C3CF; }
 .pill.on { color: var(--blue-ink); }
-.pill.on::before { background: var(--blue-deep); box-shadow: 0 0 0 4px rgba(94, 143, 189, .18); }
+.pill.on::before { background: var(--blue-deep); animation: ping 1.8s ease-out infinite; }
+/* conectat: inel care pulsează în jurul punctului */
+@keyframes ping {
+  0%   { box-shadow: 0 0 0 0 rgba(94, 143, 189, .55); }
+  70%  { box-shadow: 0 0 0 7px rgba(94, 143, 189, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(94, 143, 189, 0); }
+}
 .pill.busy::before { background: #E3B868; animation: pulse 1.2s ease-in-out infinite; }
 .pill.weak { color: #7A5A1E; }
 .pill.weak::before { background: #E3B868; }

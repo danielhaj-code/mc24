@@ -311,6 +311,7 @@ const state = {
   raw: null, ml: null, h: 0, stable: false, absent: false,
   lastLogged: null,      // { ts, ml }
   todayReadings: [],     // { ts, ml }
+  recent: [],            // { ts, ml } fiecare citire din ultimele 10 min, pentru grafic
   events: [],            // ultimele 8 zile
   lastDrinkTs: null,
   connectedSince: null,
@@ -339,6 +340,9 @@ function onLine(line) {
   state.h = Math.min(1, Math.max(0, h));
   state.ml = mlFromRaw(msg.raw, cfg);
   renderReadout();
+  if (!state.absent) state.recent.push({ ts: now, ml: state.ml });
+  while (state.recent.length && state.recent[0].ts < now - CHART_WINDOW_MS) state.recent.shift();
+  if (now - (state.chartAt ?? 0) >= 1000) { state.chartAt = now; renderDayChart(); }
 
   if (!msg.stable || state.absent) return;
 
@@ -587,6 +591,7 @@ function el(name, attrs, text) {
 
 function startOfToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
 
+const CHART_WINDOW_MS = 10 * 60 * 1000;
 function renderDayChart() {
   const svg = $('chartDay');
   svg.replaceChildren();
@@ -597,14 +602,13 @@ function renderDayChart() {
     const y = bottom - f * (bottom - top);
     svg.append(el('line', { x1: 0, x2: W, y1: y, y2: y, class: 'grid-line' }));
   }
-  const pts = state.todayReadings;
+  // ultimele 10 minute: citirile live plus cele salvate (după o reîncărcare a paginii)
+  const tEnd = Date.now(), tStart = tEnd - CHART_WINDOW_MS;
+  const pts = [...state.todayReadings, ...state.recent].filter((p) => p.ts >= tStart).sort((a, b) => a.ts - b.ts);
   if (pts.length < 2) {
-    svg.append(el('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', class: 'empty-msg' }, 'Încă nu sunt destule citiri azi'));
+    svg.append(el('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', class: 'empty-msg' }, 'Încă nu sunt citiri în ultimele 10 min'));
     return;
   }
-  // axa X: de la prima citire de azi până acum (minim o oră), ca să nu fie strivită pe 24 h
-  const tEnd = Date.now();
-  const tStart = Math.min(pts[0].ts, tEnd - 3600 * 1000);
   const xy = pts.map((p) => [
     ((p.ts - tStart) / (tEnd - tStart)) * W,
     bottom - Math.min(1, p.ml / cfg.capacity) * (bottom - top),
@@ -612,7 +616,7 @@ function renderDayChart() {
   const line = xy.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
   svg.append(el('path', { d: `${line} L${xy.at(-1)[0].toFixed(1)},${bottom} L${xy[0][0].toFixed(1)},${bottom} Z`, class: 'area' }));
   svg.append(el('path', { d: line, class: 'series' }));
-  svg.append(el('text', { x: 2, y: 139 }, fmtTime(tStart)));
+  svg.append(el('text', { x: 2, y: 139 }, '-10 min'));
   svg.append(el('text', { x: W - 2, y: 139, 'text-anchor': 'end' }, 'acum'));
 }
 
@@ -805,7 +809,7 @@ function bindSettings() {
     if (!confirm('Ștergi tot istoricul de citiri și consum? Acțiunea nu poate fi anulată.')) return;
     await db.clear();
     await clearCloud();
-    state.events = []; state.todayReadings = []; state.lastDrinkTs = null; state.lastLogged = null;
+    state.events = []; state.todayReadings = []; state.recent = []; state.lastDrinkTs = null; state.lastLogged = null;
     renderToday(); renderEvents(); renderWeekChart(); renderDayChart();
     pushTodayStats({ week: true });
     toast('Istoric șters');
