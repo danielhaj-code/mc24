@@ -57,6 +57,31 @@ de Claude Code.
 `python tools/vcp_test.py COM5` verifică citirile, `R`, calibrarea și starea BLE.
 `make SENSOR=hx711` compilează varianta cu celulă de sarcină.
 
+## Firmware STM32 din Keil µVision
+
+`stm32/MDK-ARM/SmartBottle.uvprojx` folosește aceleași surse ca `make` (Arm Compiler 6, MicroLIB,
+ST-LINK-ul de pe placă). Fișierul de pornire `MDK-ARM/startup_stm32f429xx.s` e varianta ST în sintaxă
+armasm, cu stiva de 4 KB ca în scriptul de link GCC; `Core/Src/syscalls.c` e doar pentru newlib (GCC)
+și nu face parte din proiect.
+
+1. **Keil MDK** cu licență fără limită de cod: MDK-Community (gratuită, uz necomercial) sau Pro.
+   MDK-Lite nu ajunge: imaginea are ~65 KB, iar Lite se oprește la 32 KB (eroarea L6050U la link).
+2. **Pack Installer:** instalează `Keil::STM32F4xx_DFP` (proiectul e salvat cu 3.1.1; altă versiune
+   instalată merge, µVision doar avertizează).
+3. **Driverele ST**, o singură dată: `cd stm32 && python tools/fetch_deps.py` (proiectul le ia din `Drivers/`).
+4. Deschide `stm32/MDK-ARM/SmartBottle.uvprojx` și alege ținta:
+
+   | Țintă | Echivalent `make` |
+   |---|---|
+   | `SmartBottle` | `make` (senzor analogic, legătură UART5 spre ESP32) |
+   | `SmartBottle_VCP` | `make LINK=vcp` (protocolul pe portul serial USB, pentru `tools/vcp_test.py`) |
+   | `SmartBottle_HX711` | `make SENSOR=hx711` (celulă de sarcină) |
+
+5. **F7** compilează (`MDK-ARM/out/<țintă>/smart-bottle.axf` și `.hex`), **F8** scrie pe placă prin
+   ST-LINK (ștergere, scriere, verificare, apoi pornește programul).
+
+Pe LCD versiunea firmware-ului apare `dev`: `FW_VERSION` (hash-ul git) îl pune doar `make`.
+
 ## Firmware STM32 (STM32CubeIDE, alternativ)
 
 Dacă preferi CubeIDE: copiază în proiect doar modulele aplicației (`app`, `display`, `filter`, `link`,

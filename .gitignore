@@ -16,4 +16,8 @@ Thumbs.db
 smart-bottle/stm32/Drivers/
 smart-bottle/stm32/Utilities/
 smart-bottle/stm32/build/
+# Keil µVision: ieșirea build-ului și starea ferestrelor (per utilizator)
+smart-bottle/stm32/MDK-ARM/out/
+smart-bottle/stm32/MDK-ARM/RTE/
+*.uvguix.*
 *.d
