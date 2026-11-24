@@ -1,3 +1,20 @@
+; ==============================================================================
+; Notă proiect Smart Bottle (Keil uVision / MDK-ARM)
+;
+; Acesta e fișierul de pornire CMSIS al ST pentru STM32F429xx, șablonul pentru MDK-ARM (sintaxă
+; armasm), nemodificat cu o singură excepție: Stack_Size = 0x1000 (4 KB), aceeași valoare ca
+; _Min_Stack_Size din scriptul de linker GCC (STM32F429ZITX_FLASH.ld), ca ambele build-uri să aibă
+; aceeași stivă.
+;
+; Conține tabela de vectori de întrerupere (plasată la începutul Flash-ului) și Reset_Handler:
+; la reset, Reset_Handler apelează SystemInit (system_stm32f4xx.c: FPU, tabela de vectori),
+; apoi sare la __main din biblioteca C ARM, care face scatter-loading (copiază .data din Flash
+; în RAM, șterge .bss), inițializează stiva/heap-ul și apelează main().
+; Handler-ele neimplementate sunt [WEAK] și se opresc într-o buclă infinită.
+;
+; Proiectul Keil folosește acest fișier în locul lui stm32/startup_stm32f429xx.s, care e
+; varianta în sintaxă GCC (GNU as) folosită de build-ul cu make.
+; ==============================================================================
 ;*******************************************************************************
 ;* File Name          : startup_stm32f429xx.s
 ;* Author             : MCD Application Team

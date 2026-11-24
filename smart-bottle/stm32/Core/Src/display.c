@@ -1,3 +1,18 @@
+/* display.c — meniul de pe LCD-ul tactil al plăcii STM32F429I-Discovery.
+ *
+ * Cine îl folosește: app.c (bucla principală) — display_init() din app_init(), display_update() la
+ * fiecare trecere prin app_loop(), display_poll_touch() la TOUCH_PERIOD_MS, display_next_page() la
+ * butonul USER, display_notice() după calibrare / comutarea senzorului simulat.
+ * Ce folosește: BSP-ul plăcii (LCD prin LTDC + SDRAM, touch STMPE811 prin I2C, driverul ILI9341
+ * pentru rotire), ui_gfx pentru desen, HAL_GetTick() pentru ceas. Nimic din ISR.
+ *
+ * Model de redesenare (incremental, ca să nu pâlpâie și să nu consume CPU):
+ *  - fiecare pagină are o parte „statică” (carduri, etichete), desenată doar la schimbarea paginii
+ *    (force = page != drawn_page), și o parte „dinamică”, redesenată când ui_state_t s-a schimbat
+ *    față de copia `shown` (state_changed) sau, pe pagina Info, și la fiecare secundă (ceasul);
+ *  - pastila de legătură din antet se redesenează doar când se schimbă link_state();
+ *  - sticla de pe Acasă se redesenează doar când se schimbă procentul (cache în bottle_pct);
+ *  - drawn_page = -1 forțează redesenarea completă (după screensaver, după un mesaj de calibrare). */
 #include "display.h"
 #include "app_config.h"
 #include "main.h"
@@ -17,15 +32,27 @@
  * alese din bara de jos. Tot ce se schimbă des e compus întâi în SDRAM (gfx_begin/gfx_end)
  * și copiat pe ecran dintr-o dată, ca să nu pâlpâie. */
 
+/* Paginile meniului, în ordinea taburilor din bara de jos (și a butonului USER):
+ *   Acasă   — sticla desenată + nivelul (mL sau %), starea citirii, valoarea brută;
+ *   Istoric — graficul nivelului din ultimele 10 minute (date de la ESP32);
+ *   Calib.  — citirea brută, butoanele „Setează gol/plin”, comutatorul „Senzor simulat”;
+ *   Info    — versiune, timp de funcționare, starea legăturii ESP32 / aplicație, calibrare. */
+
 enum { PAGE_HOME, PAGE_HIST, PAGE_CAL, PAGE_INFO, PAGE_COUNT };
 static const char *const TAB_NAMES[PAGE_COUNT] = { "Acasă", "Istoric", "Calib.", "Info" };
 
+/* Geometria comună (pixeli, coordonate de ecran 240 x 320):
+ * bara de taburi = card la y 276..314 (TAB_Y, TAB_H); butoanele de calibrare la y 172..228 (BTN_Y,
+ * BTN_H) — și desenul, și zonele tactile folosesc aceleași constante, ca să rămână aliniate. */
 #define TAB_Y      276
 #define TAB_H      38
 #define BTN_Y      172
 #define BTN_H      56
+/* cât stă afișat un mesaj display_notice() (ms) */
 #define NOTICE_MS  4000
 #define MOCK_SW_X  176                    /* comutatorul „Senzor simulat” */
+/* LCD_FRAME_BUFFER = 0xD0000000 (începutul SDRAM); ecranul ocupă 240*320*4 = 300 KiB, deci la +1 MiB
+ * avem loc sigur pentru zona de compunere a ui_gfx (cel mult tot ecranul). */
 #define SCRATCH    (LCD_FRAME_BUFFER + 0x100000)   /* zonă liberă în SDRAM, după framebuffer */
 
 /* apa: gradient ca sticla de pe site, de sus (deschis) în jos (închis) */
@@ -33,29 +60,42 @@ static const char *const TAB_NAMES[PAGE_COUNT] = { "Acasă", "Istoric", "Calib."
 #define WATER_BOTTOM  0xFF2C6FB8u
 #define WATER_SURFACE 0xFFB9DCF8u
 
+/* Starea afișajului (doar bucla principală):
+ * page = pagina aleasă (touch / buton); drawn_page = pagina desenată acum pe ecran, -1 = nimic valid;
+ * shown = copia ui_state_t de la ultima redesenare; shown_sec = secunda (HAL_GetTick()/1000) de atunci. */
 static int page = PAGE_HOME, drawn_page = -1;
 static ui_state_t shown;
 static uint32_t shown_sec;
 static int shown_link = -1;               /* starea afișată în pastila din antet */
 static int bottle_pct = -1;               /* nivelul desenat în sticlă; -1 = de redesenat */
+/* ts_ok = touch-ul a pornit; touch_was_down = starea de la eșantionul trecut (detectăm doar frontul
+ * de apăsare, ca o atingere ținută să nu repete acțiunea).
+ * notice = mesajul de pe pagina de calibrare: text, ok (culoare), until = HAL_GetTick() de expirare.
+ * last_touch_ms = ultima atingere / apăsare de buton, pentru screensaver. */
 static int ts_ok, touch_was_down;
 static struct { char text[40]; int ok; uint32_t until; int active; } notice;
 static uint32_t last_touch_ms;
 static int saver;                         /* screensaver activ */
+/* saver_drawn_ms = când a fost desenat ultimul cadru al screensaver-ului (se mută la SAVER_MOVE_MS) */
 static uint32_t saver_drawn_ms;
 
+/* ESP32-ul e viu dacă a trimis un heartbeat (H) în ultimele ESP_TIMEOUT_MS. esp_last_ms = 0 = niciodată.
+ * Diferența fără semn rămâne corectă și la depășirea lui HAL_GetTick() (după ~49 de zile). */
 static int esp_alive(const ui_state_t *st)
 {
     return st->esp_last_ms && HAL_GetTick() - st->esp_last_ms < ESP_TIMEOUT_MS;
 }
 
-/* 0 = fără ESP32, 1 = fără client, 2 = client BLE dar aplicația nu răspunde, 3 = aplicație activă */
+/* 0 = fără ESP32, 1 = fără client, 2 = client BLE dar aplicația nu răspunde, 3 = aplicație activă.
+ * Starea st->app vine de la ESP32, deci fără heartbeat recent n-o mai credem (poate fi veche). */
 static int link_state(const ui_state_t *st)
 {
     if (!esp_alive(st)) return 0;
     return 1 + st->app;
 }
 
+/* Procentul afișat în textul „x% din y mL”: din mL-ul aplicației dacă îl avem, altfel din citirea
+ * locală; limitat la 0..100 (ml poate depăși cap dacă aplicația are altă calibrare). */
 static int shown_pct(const ui_state_t *st)
 {
     int pct = st->has_ml && st->cap > 0 ? st->ml * 100 / st->cap : st->pct;
@@ -64,6 +104,8 @@ static int shown_pct(const ui_state_t *st)
     return pct;
 }
 
+/* Interpolare liniară între culorile a și b: num/den = 0 → a, 1 → b (pe canale R, G, B; rezultat opac).
+ * num e limitat la 0..den; den <= 0 → a. Folosit pentru gradientul apei. */
 static uint32_t mix(uint32_t a, uint32_t b, int num, int den)
 {
     if (num < 0) num = 0;
@@ -77,6 +119,8 @@ static uint32_t mix(uint32_t a, uint32_t b, int num, int den)
 
 /* ---------------- elemente comune ---------------- */
 
+/* Pastilă (etichetă rotunjită) cu text font_small: 22 px înălțime, 10 px spațiu de o parte și de alta.
+ * Lățimea depinde de text; apelantul șterge zona dinainte dacă textul se poate scurta. */
 static void pill(int x, int y, const char *text, uint32_t fg, uint32_t bg)
 {
     int w = gfx_text_width(&font_small, text) + 20;
@@ -84,6 +128,11 @@ static void pill(int x, int y, const char *text, uint32_t fg, uint32_t bg)
     gfx_text(x + 10, y + 2, &font_small, fg, text);
 }
 
+/* Antetul: pastila stării legăturii, aliniată la dreapta (marginea dreaptă la x = 228), lângă titlul
+ * „Smart Bottle” (desenat o dată, la schimbarea paginii). Șterge zona fixă 138..230 x 13..35 ca să nu
+ * rămână resturi de la un text mai lung. Memorează starea desenată în shown_link.
+ *   0 Fără ESP32 (roz)  — nu vin heartbeat-uri;  1 Deconectat (gri) — ESP32 fără client BLE;
+ *   2 App nu răsp. (galben) — client BLE, dar aplicația nu răspunde;  3 Conectat (albastru). */
 static void draw_header(const ui_state_t *st)
 {
     static const char *const text[] = { "Fără ESP32", "Deconectat", "App nu răsp.", "Conectat" };
@@ -98,18 +147,23 @@ static void draw_header(const ui_state_t *st)
     shown_link = s;
 }
 
+/* Bara de jos: 4 taburi de 54 px începând de la x = 12; tabul curent are fundal C_ACCENT_BG.
+ * Desenată doar la schimbarea paginii (page se schimbă doar de aici sau din butonul USER). */
 static void draw_tabs(void)
 {
     gfx_card(8, TAB_Y, 224, TAB_H, C_CARD);
     for (int i = 0; i < PAGE_COUNT; i++) {
         int x = 12 + i * 54;
         if (i == page) gfx_round_rect(x + 2, TAB_Y + 5, 50, 28, 14, C_ACCENT_BG);
+        /* centrul tabului e la x + 27 */
         int tw = gfx_text_width(&font_small, TAB_NAMES[i]);
         gfx_text(x + 27 - tw / 2, TAB_Y + 10, &font_small, i == page ? C_ACCENT : C_MUTED, TAB_NAMES[i]);
     }
 }
 
-/* starea citirii, ca pe site: „stabil” / „se mișcă” / eroare */
+/* starea citirii, ca pe site: „stabil” / „se mișcă” / eroare.
+ * (x, y) = colțul pastilei; clear_w = lățimea zonei șterse înainte (cea mai lungă variantă de text);
+ * stable_text = textul pentru citire stabilă (diferă între pagini: „stabil”, „simulat”, „poți calibra”). */
 static void state_pill(int x, int y, int clear_w, const ui_state_t *st, const char *stable_text)
 {
     int own = gfx_begin(x, y, clear_w, 22);
@@ -122,11 +176,17 @@ static void state_pill(int x, int y, int clear_w, const ui_state_t *st, const ch
 
 /* ---------------- Acasă ---------------- */
 
+/* Sticla: corp 58 x 160 la (36, 84), contur C_OUTLINE de 3 px, interior alb; apa are 5 px margine
+ * față de contur, deci înălțimea utilă e BOT_H - 10 = 150 px (100%). Stânga cardului, coloana de
+ * text e la dreapta (x ≈ 106..222). */
 #define BOT_X  36
 #define BOT_Y  84
 #define BOT_W  58
 #define BOT_H  160
 
+/* Partea statică a paginii Acasă: cardul mare (12, 52, 216 x 212) și gâtul sticlei (inel C_OUTLINE cu
+ * interior alb; partea lui de jos e acoperită apoi de corpul sticlei). Invalidează cache-ul bottle_pct,
+ * ca sticla să fie redesenată peste cardul nou. */
 static void home_static(void)
 {
     gfx_card(12, 52, 216, 212, C_CARD);
@@ -135,7 +195,11 @@ static void home_static(void)
     bottle_pct = -1;
 }
 
-/* Apa: suprafață dreaptă, colțuri de jos rotunjite ca interiorul sticlei, gradient pe verticală. */
+/* Apa: suprafață dreaptă, colțuri de jos rotunjite ca interiorul sticlei, gradient pe verticală.
+ * x = stânga apei, bottom = y-ul de sub ultimul rând, w = lățimea, fill = înălțimea apei (px),
+ * r = raza colțurilor de jos. Culoarea rândului depinde de poziția lui în toată înălțimea interioară
+ * (span), nu în apă, ca gradientul să stea pe loc când nivelul se schimbă. Primele 2 rânduri de sus =
+ * linia suprafeței, mai deschisă. */
 static void draw_water(int x, int bottom, int w, int fill, int r)
 {
     int top = bottom - fill, span = BOT_H - 10;
@@ -161,6 +225,8 @@ static void draw_water(int x, int bottom, int w, int fill, int r)
     }
 }
 
+/* Redesenează sticla doar dacă procentul s-a schimbat (bottle_pct = cache; -1 = invalid).
+ * Eroare de senzor = sticlă goală. Compunere în zona sticlei (gfx_begin), ca apa să nu pâlpâie. */
 static void home_bottle(const ui_state_t *st)
 {
     /* sticla urmează citirea locală, la fiecare secundă; mL de la aplicație vin doar la citiri
@@ -180,6 +246,10 @@ static void home_bottle(const ui_state_t *st)
     if (own) gfx_end();
 }
 
+/* Coloana din dreapta a paginii Acasă (x ≈ 106..222):
+ *   y  84 — valoarea mare: mL de la aplicație sau % local; „–” la eroare de senzor;
+ *   y 134 — unitatea; y 164 — „x% din cap mL” (doar cu date de la aplicație);
+ *   y 192 — pastila stării citirii; y 226 — valoarea brută a convertorului (pentru depanare). */
 static void home_dynamic(const ui_state_t *st)
 {
     char buf[24];
@@ -202,17 +272,22 @@ static void home_dynamic(const ui_state_t *st)
 
 /* ---------------- Istoric ---------------- */
 
-/* graficul nivelului din ultimele 10 minute; punctele vin de la ESP32, câte unul la 10 s */
+/* graficul nivelului din ultimele 10 minute; punctele vin de la ESP32, câte unul la 10 s.
+ * Cadrul graficului: x 44..224 (HIST_POINTS * HG_STEP = 180 px), y 92 (100%) .. 228 (0%) → 136 px. */
 #define HG_X     44                       /* stânga graficului; în stânga, etichetele axei */
 #define HG_TOP   92
 #define HG_BOT   228
 #define HG_STEP  3                        /* 60 de puncte × 3 px = 180 px */
 
+/* Partea statică a Istoricului: doar cardul; restul se compune în hist_dynamic. */
 static void hist_static(void)
 {
     gfx_card(12, 52, 216, 212, C_CARD);
 }
 
+/* Redesenează tot cardul (titlu, ultima valoare, axa, stâlpii, etichetele timpului) într-o singură
+ * zonă gfx_begin; apelat la orice schimbare din ui_state_t (de obicei un G nou, la 10 s).
+ * Fără date (has_hist = 0) afișează doar un mesaj de așteptare. */
 static void hist_dynamic(const ui_state_t *st)
 {
     char buf[24];
@@ -226,6 +301,7 @@ static void hist_dynamic(const ui_state_t *st)
         return;
     }
 
+    /* ultima valoare validă (cel mai nou punct != -1), afișată sus în dreapta */
     int last = -1;
     for (int i = HIST_POINTS - 1; i >= 0 && last < 0; i--) last = st->hist[i];
     snprintf(buf, sizeof buf, last < 0 ? "–" : "%d%%", last);
@@ -246,6 +322,7 @@ static void hist_dynamic(const ui_state_t *st)
         int v = st->hist[i];
         if (v < 0) continue;
         int h = v * (HG_BOT - HG_TOP) / 100;
+        /* stâlp de cel puțin 1 px, ca 0% să se vadă diferit de „fără citiri”; ultimul (acum) în accent */
         if (h < 1) h = 1;
         gfx_fill(HG_X + i * HG_STEP, HG_BOT - h, HG_STEP - 1, h, i == HIST_POINTS - 1 ? C_ACCENT : C_OK);
     }
@@ -260,8 +337,13 @@ static void hist_dynamic(const ui_state_t *st)
 
 /* ---------------- Calibrare ---------------- */
 
+/* Butoanele de calibrare sunt active doar cu citire validă și stabilă (calibrarea pe o valoare care
+ * se mișcă ar fi greșită). Aceeași condiție blochează și atingerea în display_poll_touch. */
 static int cal_enabled(const ui_state_t *st) { return st->sensor_ok && st->stable; }
 
+/* Buton de calibrare 104 x 56 la (x, BTN_Y), pe fundalul ecranului (nu în card). Zona ștearsă e
+ * 106 x 60 ca să cuprindă și umbra cardului (+1 px dreapta, +3 px jos). Activ = card albastru-deschis,
+ * inactiv = dreptunghi gri fără umbră. */
 static void cal_button(int x, const char *text, int enabled)
 {
     int own = gfx_begin(x, BTN_Y, 106, BTN_H + 4);
@@ -273,12 +355,17 @@ static void cal_button(int x, const char *text, int enabled)
     if (own) gfx_end();
 }
 
+/* Partea statică a paginii de calibrare: cardul de sus (citire + stare, y 52..164) și cardul de jos
+ * (comutatorul senzorului simulat, y 234..270); între ele stau butoanele (y 172..228). */
 static void cal_static(void)
 {
     gfx_card(12, 52, 216, 112, C_CARD);
     gfx_card(12, 234, 216, 36, C_CARD);
 }
 
+/* Partea dinamică: citirea brută (font mare), sub ea mesajul activ (notice) sau pastila de stare,
+ * butoanele (active/inactive) și comutatorul „Senzor simulat” (pastila glisantă 40 x 20 la
+ * x = MOCK_SW_X, butonul rotund în dreapta = pornit). Apelat și la expirarea mesajului. */
 static void cal_dynamic(const ui_state_t *st)
 {
     char buf[32];
@@ -311,10 +398,13 @@ static void cal_dynamic(const ui_state_t *st)
 
 /* ---------------- Info ---------------- */
 
+/* Tabel de 9 rânduri: etichete la x = 26, valori aliniate la dreapta în caseta x 104..214;
+ * primul rând la y = 60, câte 22 px pe rând (ultimul la y = 236, în cardul 52..264). */
 #define INFO_ROWS 9
 #define INFO_Y    60
 #define INFO_STEP 22
 
+/* Cardul și etichetele (fixe); valorile le scrie info_dynamic. */
 static void info_static(void)
 {
     gfx_card(12, 52, 216, 212, C_CARD);
@@ -324,6 +414,7 @@ static void info_static(void)
     for (int i = 0; i < INFO_ROWS; i++) gfx_text(26, INFO_Y + i * INFO_STEP, &font_small, C_MUTED, labels[i]);
 }
 
+/* „acum N s” sub 2 minute, altfel „acum N min”, de la momentul since_ms (HAL_GetTick()). */
 static void ago_text(char *out, size_t cap, uint32_t since_ms)
 {
     uint32_t a = (HAL_GetTick() - since_ms) / 1000u;
@@ -331,6 +422,9 @@ static void ago_text(char *out, size_t cap, uint32_t since_ms)
     else         snprintf(out, cap, "acum %lu min", (unsigned long)(a / 60));
 }
 
+/* Valorile paginii Info, colorate după stare (albastru = bine, galben = atenție, roz = problemă).
+ * Apelat și la fiecare secundă (ceasul „Funcționare” și textele „acum N s”). Toate valorile sunt
+ * calculate întâi, apoi scrise într-o singură zonă gfx_begin. */
 static void info_dynamic(const ui_state_t *st)
 {
     char v[INFO_ROWS][32];
@@ -339,6 +433,7 @@ static void info_dynamic(const ui_state_t *st)
 
     uint32_t s = HAL_GetTick() / 1000u;
     snprintf(v[0], sizeof v[0], "%s", FW_VERSION);
+    /* timpul de la pornirea plăcii, hh:mm:ss */
     snprintf(v[1], sizeof v[1], "%02lu:%02lu:%02lu", (unsigned long)(s / 3600), (unsigned long)(s / 60 % 60),
              (unsigned long)(s % 60));
 #if SENSOR_USE_HX711
@@ -371,6 +466,7 @@ static void info_dynamic(const ui_state_t *st)
         }
         col[4] = C_ACCENT;
     }
+    /* starea aplicației, ca în antet: fără ESP32 viu, starea venită de la el nu mai e de încredere */
     switch (esp_alive(st) ? st->app : 0) {
     case 2:  snprintf(v[5], sizeof v[5], "activă"); col[5] = C_ACCENT; break;
     case 1:  snprintf(v[5], sizeof v[5], "nu răspunde"); col[5] = C_WARN; break;
@@ -390,10 +486,14 @@ static void info_dynamic(const ui_state_t *st)
 
 /* ---------------- Screensaver ---------------- */
 
+/* fundalul închis al screensaver-ului (protejează panoul și nu orbește noaptea) și perioada de mutare */
 #define SAVER_BG      0xFF0F1620u
 #define SAVER_MOVE_MS 10000u
 
-/* doar nivelul, pe fundal închis; poziția se mută la 10 s */
+/* doar nivelul, pe fundal închis; poziția se mută la 10 s.
+ * Desenează tot ecranul: valoarea mare (mL sau %) și sub ea unitatea + totalul de azi, centrate
+ * orizontal. y se schimbă la fiecare SAVER_MOVE_MS: pasul * 67 mod 200 sare „aleator” prin 40..239,
+ * ca pixelii să nu stea aprinși mereu în același loc. */
 static void saver_draw(const ui_state_t *st)
 {
     char big[16], small[32];
@@ -418,6 +518,9 @@ static void saver_draw(const ui_state_t *st)
 
 /* ---------------- cadru ---------------- */
 
+/* Pornește LCD-ul prin BSP (SDRAM, LTDC, ILI9341 pe SPI), opțional rotește imaginea cu 180°, setează
+ * stratul de fundal pe framebuffer, pornește ui_gfx și touch-ul. Dacă touch-ul nu pornește, meniul
+ * merge doar din butonul USER (ts_ok = 0). Apelat o dată din app_init(). */
 void display_init(void)
 {
     BSP_LCD_Init();
@@ -430,6 +533,7 @@ void display_init(void)
     ili9341_WriteData(0x27);
     ili9341_WriteData(0x04);
 #endif
+    /* stratul 0 al LTDC = tot ecranul, ARGB8888, din framebuffer-ul din SDRAM */
     BSP_LCD_LayerDefaultInit(LCD_BACKGROUND_LAYER, LCD_FRAME_BUFFER);
     BSP_LCD_SelectLayer(LCD_BACKGROUND_LAYER);
     BSP_LCD_DisplayOn();
@@ -441,7 +545,10 @@ void display_init(void)
     drawn_page = -1;
 }
 
-/* câmpurile care se schimbă la fiecare mesaj fără să schimbe ce se vede pe pagini fără ceas */
+/* câmpurile care se schimbă la fiecare mesaj fără să schimbe ce se vede pe pagini fără ceas.
+ * Compară stările ignorând câmpurile de timp (last_app_ms, esp_last_ms, esp_uptime): ele se schimbă
+ * la fiecare mesaj/heartbeat (la 2 s) și ar redesena degeaba. Ce depinde de ele (pagina Info, pastila
+ * din antet) se reîmprospătează separat: la fiecare secundă, respectiv la schimbarea link_state(). */
 static int state_changed(const ui_state_t *a, const ui_state_t *b)
 {
     ui_state_t x = *a, y = *b;
@@ -451,6 +558,11 @@ static int state_changed(const ui_state_t *a, const ui_state_t *b)
     return memcmp(&x, &y, sizeof x) != 0;
 }
 
+/* Apelat la fiecare trecere prin app_loop(); durează aproape nimic dacă nu e nimic de redesenat.
+ * Ordinea: screensaver (dacă e activ, nimic altceva) → la pagină nouă, partea statică compusă într-o
+ * zonă pe tot ecranul (apare dintr-o dată, cu partea dinamică inclusă) → expirarea mesajului →
+ * antetul dacă s-a schimbat legătura → partea dinamică a paginii, doar la nevoie.
+ * Screensaver-ul pornește după SCREENSAVER_MS (app_config.h) fără atingere/buton; 0 îl dezactivează. */
 void display_update(const ui_state_t *st)
 {
     uint32_t now_sec = HAL_GetTick() / 1000u;
@@ -468,6 +580,7 @@ void display_update(const ui_state_t *st)
     }
 #endif
     int force = page != drawn_page;
+    /* own = 1 dacă am deschis noi zona de compunere pe tot ecranul (închisă la sfârșit, după dinamic) */
     int own = 0;
 
     if (force) {
@@ -484,6 +597,7 @@ void display_update(const ui_state_t *st)
         draw_header(st);
     }
 
+    /* mesajul a expirat: revenim la pastila de stare (comparație cu semn, corectă la depășirea tick-ului) */
     if (notice.active && (int32_t)(HAL_GetTick() - notice.until) >= 0) {
         notice.active = 0;
         if (page == PAGE_CAL && !force) cal_dynamic(st);
@@ -516,6 +630,8 @@ void display_update(const ui_state_t *st)
     shown_sec = now_sec;
 }
 
+/* Copiază mesajul (tăiat la 39 de caractere) și îl ține NOTICE_MS. Forțează redesenarea completă,
+ * oricare ar fi pagina (mesajul se vede doar pe Calibrare). Apelat de app.c. */
 void display_notice(const char *msg, int ok)
 {
     snprintf(notice.text, sizeof notice.text, "%s", msg);
@@ -525,6 +641,7 @@ void display_notice(const char *msg, int ok)
     drawn_page = -1;                      /* redesenează pagina la următorul update */
 }
 
+/* Butonul USER (antirebond în app.c): trezește din screensaver sau trece la pagina următoare, ciclic. */
 void display_next_page(void)
 {
     last_touch_ms = HAL_GetTick();
@@ -536,6 +653,12 @@ void display_next_page(void)
     page = (page + 1) % PAGE_COUNT;
 }
 
+/* Citește touch-ul (STMPE811 prin I2C, durează puțin) și reacționează doar la frontul de apăsare.
+ * Prima atingere în screensaver doar trezește ecranul. Zone:
+ *   y >= 270 (bara de taburi, cu 6 px toleranță în sus) → schimbă pagina (redesenată la update);
+ *   Calibrare, y 234..269 (cardul de jos, toată lățimea) → UI_EV_TOGGLE_MOCK;
+ *   Calibrare, y 172..227, buton activ → UI_EV_SET_EMPTY (x 12..115) / UI_EV_SET_FULL (x 124..227).
+ * Întoarce evenimentul pentru app_loop(), care face efectiv acțiunea. */
 ui_event_t display_poll_touch(const ui_state_t *st)
 {
     if (!ts_ok) return UI_EV_NONE;
@@ -560,6 +683,7 @@ ui_event_t display_poll_touch(const ui_state_t *st)
 #endif
 
     if (y >= TAB_Y - 6) {
+        /* tabul sub deget; în afara barei (x < 12 sau x > 227) se ia tabul de la margine */
         int p = (x - 12) / 54;
         if (p < 0) p = 0;
         if (p >= PAGE_COUNT) p = PAGE_COUNT - 1;

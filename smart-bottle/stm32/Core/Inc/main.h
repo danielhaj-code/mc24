@@ -1,3 +1,12 @@
+/*
+ * main.h — legătura dintre main.c (inițializarea hardware) și restul modulelor.
+ *
+ * Exportă handle-urile HAL definite în main.c, alege UART-ul protocolului (LINK_HUART) după
+ * definiția de compilare LINK_VCP și declară cele două utilitare globale: dbg_log() și
+ * Error_Handler(). Include stm32f4xx_hal.h, deci cine include main.h are tot HAL-ul.
+ * Contract: handle-urile sunt valide doar după ce main() a terminat MX_xxx_Init(), adică
+ * începând cu app_init(); modulele nu le reinițializează.
+ */
 #ifndef MAIN_H
 #define MAIN_H
 
@@ -19,9 +28,11 @@ extern UART_HandleTypeDef huart1;   /* port serial virtual ST-LINK (USB): PA9 TX
 #define LINK_INSTANCE   UART5
 #endif
 
-/* Jurnal pe portul serial USB (115200). În modul LINK=vcp e oprit, ca să nu se amestece cu protocolul. */
+/* Jurnal pe portul serial USB (115200). În modul LINK=vcp e oprit, ca să nu se amestece cu protocolul.
+ * Blocant (până la 20 ms), stil printf, maxim 127 caractere; doar din bucla principală, nu din ISR. */
 void dbg_log(const char *fmt, ...);
 
+/* Eroare fatală: oprește întreruperile și clipește LD4 (roșu) la nesfârșit. Nu se întoarce. */
 void Error_Handler(void);
 
 #endif /* MAIN_H */
