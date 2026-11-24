@@ -9,17 +9,20 @@ Senzor ──► STM32F429I-DISC1 ──UART5──► ESP32 ──BLE (Nordic U
            LCD, calibrare în RAM        transparentă                IndexedDB (istoric local)
 ```
 
-Protocolul comun e descris în [PROTOCOL.md](PROTOCOL.md), iar lista de componente în [BOM.md](BOM.md).
+Protocolul comun e descris în [PROTOCOL.md](PROTOCOL.md), lista de componente în [BOM.md](BOM.md), iar
+documentația codului (arhitectură, module, extindere) în [docs/](docs/README.md).
 
 ## Structură
 
 | Folder | Conținut |
 |---|---|
-| `stm32/Core/Inc`, `stm32/Core/Src` | Modulele firmware (se adaugă într-un proiect STM32CubeIDE) |
+| `stm32/` | Firmware-ul: codul în `Core/Inc`, `Core/Src`, build cu `make` |
+| `stm32-keil/`, `stm32-cubeide/` | Proiectele Keil µVision și STM32CubeIDE, cu sursele luate din `stm32/` |
 | `esp32/SmartBottleBridge` | Sketch Arduino pentru puntea UART ↔ BLE |
 | `web/` | Aplicația web (PWA), fără build: senzor, HydroGPT™, abonamente, clasament |
 | `supabase/` | Schema bazei de date (migrare SQL) și funcția `hydrogpt` (agentul AI în cloud) |
 | `tests/` | Teste pe PC pentru filtru, protocol, logica aplicației și agent |
+| `docs/` | Documentația codului |
 
 ## Cablaj
 
@@ -107,7 +110,9 @@ e același firmware ca la `make` și Keil, iar ce modifici în CubeIDE ajunge ș
 Ca la Keil, pe LCD versiunea apare `dev`. Nu e proiect CubeMX (nu are `.ioc`): pinii și perifericele
 se configurează în `main.c`, `stm32f4xx_hal_msp.c` și `app_config.h`.
 
-**LED-uri:** LD3 (verde) e aprins când telefonul e conectat, iar LD4 (roșu) clipește la eroare de senzor.
+**LED-uri:** LD3 (verde) e aprins cât timp aplicația e activă (confirmat de heartbeat-ul `H` de la ESP32, nu doar
+de conexiunea BLE). LD4 (roșu) își schimbă starea la fiecare citire eșuată a senzorului; clipirea rapidă
+continuă înseamnă `Error_Handler()` (eroare la inițializare).
 
 ## ESP32
 

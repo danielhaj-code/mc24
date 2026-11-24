@@ -2,7 +2,8 @@
 
 Toate mesajele sunt text ASCII, terminate cu `\n`, câmpuri separate prin virgulă.
 Același format circulă pe UART (STM32 ↔ ESP32) și pe BLE (ESP32 ↔ telefon) —
-ESP32 doar retransmite, nu interpretează (cu excepția mesajului `S`, pe care îl generează el).
+ESP32 retransmite liniile neschimbate, cu excepțiile: generează singur `S`, `H`, `G` și răspunsul `P`, tratează
+el `P` și `B` de la aplicație (nu ajung la STM32) și citește `L` pentru istoricul nivelului (`G`).
 În modul mock (`MOCK_STM32 1`), ESP32 produce el mesajele STM32-ului, în exact același format.
 
 ## BLE (Nordic UART Service — compatibil nRF Connect pentru teste)
@@ -34,13 +35,15 @@ Exemplu: `L,2310,64,1`
 | `C,<raw_gol>,<raw_plin>` | Setează calibrarea folosită pentru procent și LCD |
 | `R` | Cere o citire imediată |
 | `P` | Ping (heartbeat). Răspunde ESP32, nu ajunge la STM32 |
-| `M,<ml>,<capacitate_ml>` | Volumul afișat în aplicație (rotunjit ca acolo; din fiecare citire calibrată, cu sticla prezentă); la schimbare max. 2/s, repetat la 5 s |
+| `M,<ml>,<capacitate_ml>` | Volumul afișat în aplicație (rotunjit ca acolo; din fiecare citire calibrată, cu sticla prezentă); la schimbare max. 2/s; aceeași valoare se repetă la 5 s cât timp vin citiri |
 | `T,<total_ml>,<obiectiv_ml>,<nr>` | Statisticile zilei: total băut, obiectiv, număr de înghițituri |
 | `U,<minute>` | Minute de la ultima înghițitură, `-1` = niciuna azi; cu `T` și la 60 s |
 | `W,<i>,<ml>` | Totalul zilei `i` (0 = acum 6 zile, 6 = azi); toate 7 la conectare, apoi doar `W,6` |
+| `B` | „La revedere”: aplicația se deconectează. Îl tratează ESP32 (închide legătura BLE), nu ajunge la STM32 |
 
 `M`, `T`, `U`, `W` sunt doar pentru afișarea din meniul LCD; STM32 nu le folosește în calcule.
-Toate liniile, cu `\n`, au cel mult 20 de octeți.
+Toate liniile, cu `\n`, au cel mult 20 de octeți: aplicația scrie în bucăți de 20 de octeți, iar ESP32 tratează
+sfârșitul fiecărei scrieri BLE ca sfârșit de linie, deci o linie mai lungă ar ajunge ruptă în două.
 
 ## ESP32 → STM32 (intern)
 
@@ -50,8 +53,8 @@ Toate liniile, cu `\n`, au cel mult 20 de octeți.
 | `H,<uptime_s>,<aplicatie>` | Heartbeat la 2 s. `aplicatie`: 0 = niciun client, 1 = client BLE care nu răspunde (nimic scris în 12 s), 2 = aplicație activă. STM32 consideră ESP32 căzut după 5 s fără `H`; scăderea lui `uptime_s` = ESP32 a repornit |
 | `G,<i>,<procent>` | Istoricul nivelului pentru graficul de pe LCD: 60 de puncte, câte unul la 10 s (ultimele 10 min), `i` = 0..59 (59 = cel mai recent), `procent` = media citirilor `L` din pas (cele stabile, dacă există), `-1` = fără citiri. ESP32 ține seria în RAM și o retrimite întreagă la fiecare 10 s și după o repornire a STM32 |
 
-Sincronizarea cu Supabase (evenimentele de consum) se face în loturi, cel mult o dată pe minut;
-legătura BLE rămâne în timp real.
+Sincronizarea cu Supabase (evenimentele de consum) se face în loturi: la 60 s, mai devreme la 20 de evenimente
+și când pagina trece în fundal; legătura BLE rămâne în timp real.
 
 ## Heartbeat
 
