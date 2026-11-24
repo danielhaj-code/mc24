@@ -7,7 +7,7 @@
   ******************************************************************************
   * Smart Bottle pe Template_GPIO. „MSP” = partea dependentă de placă a fiecărui periferic:
   * ceasul perifericului, pinii (mod, funcție alternativă AF) și NVIC. HAL_xxx_Init() din main.c
-  * cheamă automat HAL_xxx_MspInit() de aici. LCD-ul, SDRAM-ul, SPI5 și I2C3 sunt configurate
+  * cheamă automat HAL_xxx_MspInit() de aici. LCD-ul (LTDC, SPI5) și SDRAM-ul sunt configurate
   * de BSP-ul plăcii (Drivers/BSP), nu aici.
   *
   * Prioritățile NVIC (grupare 4: 0 = cea mai urgentă): UART-urile 5, SysTick 15, deci un octet

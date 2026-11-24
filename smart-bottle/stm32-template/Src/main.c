@@ -6,26 +6,9 @@
   ******************************************************************************
   * Smart Bottle pe șablonul de laborator Template_GPIO (STM32F429I-DISC1).
   *
-  * Fișier în formatul generat de CubeMX din Template_GPIO.ioc. Inițializările perifericelor
-  * (ceas, GPIO, USART1, ADC1, UART5) corespund configurației din .ioc; codul aplicației stă
-  * doar între marcajele USER CODE, deci rămâne la o regenerare din CubeMX.
-  *
-  * Ordinea de pornire:
-  *   1. Reset_Handler (MDK-ARM/startup_stm32f429xx.s) -> SystemInit() -> __main -> main();
-  *      până aici procesorul merge pe HSI 16 MHz.
-  *   2. HAL_Init(): Flash prefetch/cache, grupare priorități NVIC 4, SysTick la 1 ms,
-  *      apoi HAL_MspInit() din stm32f4xx_hal_msp.c.
-  *   3. SystemClock_Config(): PLL din HSE 8 MHz -> 180 MHz (vezi calculul la funcție).
-  *   4. MX_xxx_Init(): HAL_xxx_Init() cheamă HAL_xxx_MspInit() (pini, ceasuri, NVIC).
-  *   5. USER CODE 2: mesajul de boot și app_init() (LCD, touch, senzor, recepție UART);
-  *      USER CODE 3: app_loop() la nesfârșit (app.c).
-  *
-  * Definiții de compilare (Keil: Options for Target -> C/C++ -> Define):
-  *   SENSOR_USE_HX711=1  -> celula de sarcină cu HX711 în loc de senzorul analogic
-  *   LINK_VCP=1          -> protocolul pe USART1 (USB) în loc de UART5; jurnalul se oprește
-  *   FW_VERSION="..."    -> textul din mesajul de boot (implicit "dev")
-  *
-  * Copyright (c) 2020 STMicroelectronics (structura generată). Licență BSD 3-Clause.
+  * Generat de CubeMX din Template_GPIO.ioc: ceas 180 MHz, GPIO, USART1, ADC1, UART5.
+  * Codul nostru stă doar între marcajele USER CODE: mesajul de pornire, app_init() o dată și
+  * app_loop() la nesfârșit (app.c). La o regenerare din CubeMX rămâne neschimbat.
   ******************************************************************************
   */
 /* USER CODE END Header */
@@ -35,7 +18,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app.h"
-#include "app_config.h"
 #include <stdarg.h>
 #include <stdio.h>
 /* USER CODE END Includes */
@@ -47,11 +29,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
-/* Versiunea firmware-ului, doar pentru mesajul de boot. */
-#ifndef FW_VERSION
-#define FW_VERSION "dev"
-#endif
 
 /* USER CODE END PD */
 
@@ -118,25 +95,8 @@ int main(void)
   MX_ADC1_Init();
   MX_UART5_Init();
   /* USER CODE BEGIN 2 */
-
-  /* Mesajul de boot pe portul serial USB (115200 8N1): confirmă ceasul și varianta compilată. */
-  dbg_log("\r\n[boot] Smart Bottle %s (Template_GPIO), %lu MHz, senzor %s, legatura pe %s\r\n",
-          FW_VERSION, (unsigned long)(SystemCoreClock / 1000000U),
-#if SENSOR_USE_HX711
-          "HX711",
-#else
-          "analogic PA5",
-#endif
-#if LINK_VCP
-          "USB (VCP)"
-#else
-          "UART5 (ESP32)"
-#endif
-  );
-
-  app_init();                       /* LCD, touch, senzor, recepția UART pe întreruperi */
-  dbg_log("[boot] app pornita\r\n");
-
+  dbg_log("\r\n[boot] Smart Bottle (Template_GPIO), %lu MHz\r\n", (unsigned long)(SystemCoreClock / 1000000U));
+  app_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -146,8 +106,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    /* Super-buclă fără sistem de operare: citirea la 1 s, touch-ul la 20 ms, mesajele primite
-     * și redesenarea LCD-ului se programează toate în app_loop() după HAL_GetTick(). */
     app_loop();
   }
   /* USER CODE END 3 */
@@ -161,17 +119,6 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-
-  /* USER CODE BEGIN SystemClock_Config 0 */
-  /* HSE 8 MHz (cristalul X3 al plăcii) -> PLL:
-   *   intrare VCO = 8 MHz / PLLM 8  = 1 MHz     (permis 1..2 MHz)
-   *   ieșire VCO  = 1 MHz * PLLN 360 = 360 MHz  (permis 100..432 MHz)
-   *   SYSCLK      = 360 / PLLP 2    = 180 MHz  (maximul lui STM32F429)
-   *   PLL48CK     = 360 / PLLQ 7    ≈ 51,4 MHz (doar pentru USB/SDIO, nefolosite)
-   * AHB 180 MHz, APB1 = /4 = 45 MHz (UART5), APB2 = /2 = 90 MHz (USART1, ADC1).
-   * Peste 168 MHz trebuie Scale 1 și over-drive; Flash-ul are nevoie de 5 stări de așteptare.
-   * LTDC-ul are ceasul lui (PLLSAI), setat de BSP_LCD_Init. */
-  /* USER CODE END SystemClock_Config 0 */
 
   /** Configure the main internal regulator output voltage
   */
@@ -225,8 +172,7 @@ static void MX_ADC1_Init(void)
 {
 
   /* USER CODE BEGIN ADC1_Init 0 */
-  /* O conversie la cerere (start software, polling), 12 biți: 0..4095 pentru 0..3,3 V.
-   * Ceas ADC = APB2 90 MHz / 4 = 22,5 MHz (maxim 36 MHz). Folosit de sensor.c (varianta analogică). */
+
   /* USER CODE END ADC1_Init 0 */
 
   ADC_ChannelConfTypeDef sConfig = {0};
@@ -264,8 +210,7 @@ static void MX_ADC1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN ADC1_Init 2 */
-  /* 84 de cicluri de eșantionare (≈3,7 µs): senzorul are impedanță mare, iar condensatorul de
-   * eșantionare al ADC-ului are nevoie de timp să se încarce prin el. */
+
   /* USER CODE END ADC1_Init 2 */
 
 }
@@ -279,8 +224,7 @@ static void MX_UART5_Init(void)
 {
 
   /* USER CODE BEGIN UART5_Init 0 */
-  /* Legătura cu ESP32 (PROTOCOL.md): 115200 8N1, fără control de flux. Recepția octet cu octet
-   * pe întreruperi o pornește link_init() (link.c), doar pe UART-ul legăturii. */
+
   /* USER CODE END UART5_Init 0 */
 
   /* USER CODE BEGIN UART5_Init 1 */
@@ -313,8 +257,7 @@ static void MX_USART1_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART1_Init 0 */
-  /* Portul serial virtual al ST-LINK (COM-ul „STMicroelectronics STLink Virtual COM Port”):
-   * jurnalul dbg_log() sau, cu LINK_VCP=1, protocolul. 115200 8N1 (șablonul avea 9600). */
+
   /* USER CODE END USART1_Init 0 */
 
   /* USER CODE BEGIN USART1_Init 1 */
@@ -347,11 +290,7 @@ static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
-  /* Pinii senzorului (aceiași ca în app_config.h: SENS_PWR_*, HX711_*):
-   *   PE4 SENS_PWR  - alimentarea senzorului analogic, pornită doar în timpul citirii
-   *   PE3 HX711_SCK - ceasul HX711 (HIGH > 60 µs = power-down, deci pornește LOW)
-   *   PE2 HX711_DT  - date HX711, cu pull-up: modul lipsă = „ocupat” -> timeout, nu zerouri false
-   * LED-urile LD3/LD4 și butonul USER sunt reinițializate și de BSP (app_init). */
+
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
@@ -363,23 +302,17 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOG_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, HX711_SCK_Pin|SENS_PWR_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(SENS_PWR_GPIO_Port, SENS_PWR_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, LD3_Pin|LD4_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : HX711_DT_Pin */
-  GPIO_InitStruct.Pin = HX711_DT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(HX711_DT_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : HX711_SCK_Pin SENS_PWR_Pin */
-  GPIO_InitStruct.Pin = HX711_SCK_Pin|SENS_PWR_Pin;
+  /*Configure GPIO pin : SENS_PWR_Pin */
+  GPIO_InitStruct.Pin = SENS_PWR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+  HAL_GPIO_Init(SENS_PWR_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USER_Pin */
   GPIO_InitStruct.Pin = USER_Pin;
@@ -401,22 +334,16 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-/* printf simplificat spre USART1 (portul serial USB al ST-LINK). Mesajul e trunchiat la 127 de
- * caractere; transmisie blocantă cu timeout 20 ms (128 octeți la 115200 ≈ 11 ms): dacă UART-ul
- * e blocat, mesajul se pierde în loc să oprească aplicația. Doar din bucla principală. */
+/* Jurnal pe portul serial USB (USART1): ca printf, maxim 127 de caractere, așteaptă cel mult 20 ms. */
 void dbg_log(const char *fmt, ...)
 {
-#if LINK_VCP
-  (void)fmt;                        /* USART1 transportă protocolul: jurnalul l-ar strica */
-#else
   char buf[128];
   va_list ap;
   va_start(ap, fmt);
   int n = vsnprintf(buf, sizeof buf, fmt, ap);
   va_end(ap);
-  /* vsnprintf întoarce lungimea care AR FI rezultat; trimitem doar cât încape în buffer. */
-  if (n > 0) HAL_UART_Transmit(&huart1, (uint8_t *)buf, (uint16_t)(n < (int)sizeof buf ? n : (int)sizeof buf - 1), 20);
-#endif
+  if (n > (int)sizeof buf - 1) n = (int)sizeof buf - 1;     /* mesaj trunchiat */
+  if (n > 0) HAL_UART_Transmit(&huart1, (uint8_t *)buf, (uint16_t)n, 20);
 }
 
 /* USER CODE END 4 */
@@ -428,13 +355,8 @@ void dbg_log(const char *fmt, ...)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* Eroare fatală (init HAL eșuat, HardFault etc.): oprește întreruperile și clipește LD4 (roșu)
-   * la nesfârșit. PG14 e reconfigurat aici, fiindcă eroarea poate apărea înainte de MX_GPIO_Init.
-   * Frecvența clipirii depinde de ceasul la care a apărut eroarea (doar orientativă). */
+  /* Eroare fatală (ex. cristalul nu pornește): LED-ul roșu LD4 clipește la nesfârșit. */
   __disable_irq();
-  __HAL_RCC_GPIOG_CLK_ENABLE();
-  GPIO_InitTypeDef g = { .Pin = LD4_Pin, .Mode = GPIO_MODE_OUTPUT_PP, .Pull = GPIO_NOPULL, .Speed = GPIO_SPEED_FREQ_LOW };
-  HAL_GPIO_Init(LD4_GPIO_Port, &g);
   while (1)
   {
     HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
@@ -454,8 +376,6 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* Parametru invalid dat unei funcții HAL (doar cu USE_FULL_ASSERT). */
-  (void)file; (void)line;
   Error_Handler();
   /* USER CODE END 6 */
 }

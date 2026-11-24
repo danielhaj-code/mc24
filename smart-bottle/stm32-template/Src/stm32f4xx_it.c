@@ -206,9 +206,8 @@ void SysTick_Handler(void)
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
-  /* Portul serial USB. Recepția pe întreruperi e pornită doar cu LINK_VCP=1 (protocolul pe USB);
-   * altfel USART1 doar transmite jurnalul, prin polling. Nu citim DR aici: octetul îl preia HAL
-   * și îl dă lui link.c prin HAL_UART_RxCpltCallback. */
+  /* Portul serial USB: folosit doar pentru jurnal (transmisie prin polling), deci aici nu sosesc
+   * date în mod normal. */
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */

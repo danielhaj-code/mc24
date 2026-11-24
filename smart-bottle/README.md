@@ -18,7 +18,7 @@ documentația codului (arhitectură, module, extindere) în [docs/](docs/README.
 |---|---|
 | `stm32/` | Firmware-ul: codul în `Core/Inc`, `Core/Src`, build cu `make` |
 | `stm32-keil/`, `stm32-cubeide/` | Proiectele Keil µVision și STM32CubeIDE, cu sursele luate din `stm32/` |
-| `stm32-template/` | Același firmware în șablonul de laborator Template_GPIO (CubeMX + Keil, Arm Compiler 6.22), de sine stătător; vezi [README-ul lui](stm32-template/README.md) |
+| `stm32-template/` | Varianta simplificată pentru șablonul de laborator Template_GPIO (CubeMX + Keil, Arm Compiler 6.22, sub 32 KB): senzor, protocol de bază, LCD simplu; de sine stătătoare, vezi [README-ul ei](stm32-template/README.md) |
 | `esp32/SmartBottleBridge` | Sketch Arduino pentru puntea UART ↔ BLE |
 | `web/` | Aplicația web (PWA), fără build: senzor, HydroGPT™, abonamente, clasament |
 | `supabase/` | Schema bazei de date (migrare SQL) și funcția `hydrogpt` (agentul AI în cloud) |
@@ -276,5 +276,4 @@ node test_logic.mjs
 node test_agent.mjs
 node test_link.mjs
 node test_insights.mjs
-node test_template_sync.mjs
 ```

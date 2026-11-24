@@ -337,7 +337,7 @@
               <MiscControls />
               <Define>USE_HAL_DRIVER,STM32F429xx,HAL_LTDC_MODULE_ENABLED,HAL_DMA2D_MODULE_ENABLED,HAL_SDRAM_MODULE_ENABLED,HAL_SPI_MODULE_ENABLED,HAL_I2C_MODULE_ENABLED</Define>
               <Undefine />
-              <IncludePath>../Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Drivers/BSP/STM32F429I-Discovery;../Drivers/BSP/Components/ili9341;../Drivers/BSP/Components/stmpe811</IncludePath>
+              <IncludePath>../Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Drivers/BSP/STM32F429I-Discovery;../Drivers/BSP/Components/ili9341</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -417,19 +417,9 @@
               <FilePath>../Src/app.c</FilePath>
             </File>
             <File>
-              <FileName>display.c</FileName>
+              <FileName>sensor.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Src/display.c</FilePath>
-            </File>
-            <File>
-              <FileName>filter.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Src/filter.c</FilePath>
-            </File>
-            <File>
-              <FileName>fonts_ui.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Src/fonts_ui.c</FilePath>
+              <FilePath>../Src/sensor.c</FilePath>
             </File>
             <File>
               <FileName>link.c</FileName>
@@ -437,19 +427,9 @@
               <FilePath>../Src/link.c</FilePath>
             </File>
             <File>
-              <FileName>protocol.c</FileName>
+              <FileName>display.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Src/protocol.c</FilePath>
-            </File>
-            <File>
-              <FileName>sensor.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Src/sensor.c</FilePath>
-            </File>
-            <File>
-              <FileName>ui_gfx.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Src/ui_gfx.c</FilePath>
+              <FilePath>../Src/display.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -607,19 +587,9 @@
               <FilePath>../Drivers/BSP/STM32F429I-Discovery/stm32f429i_discovery_sdram.c</FilePath>
             </File>
             <File>
-              <FileName>stm32f429i_discovery_ts.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Drivers/BSP/STM32F429I-Discovery/stm32f429i_discovery_ts.c</FilePath>
-            </File>
-            <File>
               <FileName>ili9341.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Drivers/BSP/Components/ili9341/ili9341.c</FilePath>
-            </File>
-            <File>
-              <FileName>stmpe811.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Drivers/BSP/Components/stmpe811/stmpe811.c</FilePath>
             </File>
           </Files>
         </Group>

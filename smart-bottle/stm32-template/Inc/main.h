@@ -3,18 +3,10 @@
   ******************************************************************************
   * @file           : main.h
   * @brief          : Header for main.c file.
-  *                   This file contains the common defines of the application.
   ******************************************************************************
-  * Smart Bottle pe șablonul de laborator Template_GPIO (STM32F429I-DISC1).
-  *
-  * Fișier generat de CubeMX din Template_GPIO.ioc; codul nostru stă doar între
-  * marcajele USER CODE, ca să rămână la o regenerare.
-  *
-  * Pe lângă ce generează CubeMX (prototipul Error_Handler și etichetele pinilor),
-  * exportă pentru modulele aplicației (sensor.c, link.c, app.c):
-  *   - handle-urile HAL definite în main.c (hadc1, huart5, huart1);
-  *   - LINK_HUART / LINK_INSTANCE: UART-ul pe care circulă protocolul (PROTOCOL.md);
-  *   - dbg_log(): jurnal pe portul serial USB al ST-LINK.
+  * Smart Bottle pe șablonul Template_GPIO. Generat de CubeMX din Template_GPIO.ioc; codul nostru
+  * stă doar între marcajele USER CODE. Pe lângă etichetele pinilor (SENS_PWR_Pin, LD3_Pin, ...),
+  * exportă pentru modulele aplicației handle-urile perifericelor și funcția de jurnal.
   ******************************************************************************
   */
 /* USER CODE END Header */
@@ -43,22 +35,10 @@ extern "C" {
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 
-/* Handle-uri HAL definite în main.c. Sunt valide după MX_xxx_Init(), adică începând cu app_init();
- * modulele le folosesc, nu le reinițializează. */
-extern ADC_HandleTypeDef  hadc1;    /* senzorul analogic, PA5 = ADC1_IN5 (sensor.c) */
+/* Definite în main.c, folosite de sensor.c (hadc1) și link.c (huart5). */
+extern ADC_HandleTypeDef  hadc1;    /* senzorul, PA5 = ADC1_IN5 */
 extern UART_HandleTypeDef huart5;   /* spre ESP32: PC12 TX, PD2 RX, 115200 8N1 */
-extern UART_HandleTypeDef huart1;   /* port serial virtual ST-LINK (USB): PA9 TX, PA10 RX, 115200 8N1 */
-
-/* UART-ul protocolului. Normal UART5, spre ESP32. Cu LINK_VCP=1 (în Keil: Options for Target ->
- * C/C++ -> Define) protocolul trece pe USART1, portul serial USB, ca să poată fi testat de pe PC
- * fără ESP32 (stm32/tools/vcp_test.py din repo). */
-#if LINK_VCP
-#define LINK_HUART      huart1
-#define LINK_INSTANCE   USART1
-#else
-#define LINK_HUART      huart5
-#define LINK_INSTANCE   UART5
-#endif
+extern UART_HandleTypeDef huart1;   /* portul serial USB al ST-LINK (jurnal), 115200 8N1 */
 
 /* USER CODE END EC */
 
@@ -72,18 +52,12 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
-/* Jurnal pe portul serial USB (USART1, 115200), stil printf, maxim 127 de caractere.
- * Blocant (până la 20 ms), deci doar din bucla principală, nu din întreruperi.
- * Cu LINK_VCP=1 nu face nimic: USART1 transportă atunci protocolul. */
+/* Jurnal pe portul serial USB, ca printf (maxim 127 de caractere). */
 void dbg_log(const char *fmt, ...);
 
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define HX711_DT_Pin GPIO_PIN_2
-#define HX711_DT_GPIO_Port GPIOE
-#define HX711_SCK_Pin GPIO_PIN_3
-#define HX711_SCK_GPIO_Port GPIOE
 #define SENS_PWR_Pin GPIO_PIN_4
 #define SENS_PWR_GPIO_Port GPIOE
 #define PH0_OSC_IN_Pin GPIO_PIN_0

@@ -69,7 +69,7 @@ obiective, istoric, cont și agent.
 | `stm32/Drivers/`, `stm32/Utilities/` | Driverele ST (HAL, CMSIS, BSP, fonturi); nu sunt în git, le descarcă `stm32/tools/fetch_deps.py` |
 | `stm32-keil/` | Proiectul Keil µVision (doar proiectul și startup-ul armasm; sursele vin din `stm32/`) |
 | `stm32-cubeide/` | Proiectul STM32CubeIDE (doar `.project` / `.cproject`; sursele sunt legate din `stm32/`) |
-| `stm32-template/` | Același firmware în șablonul de laborator Template_GPIO (CubeMX + Keil); folder de sine stătător, cu drivere și copii ale modulelor din `stm32/Core` |
+| `stm32-template/` | Varianta simplificată pentru șablonul de laborator Template_GPIO (CubeMX + Keil, sub 32 KB): cod propriu de ~480 de linii, de sine stătătoare, cu drivere |
 | `esp32/SmartBottleBridge/` | Sketch-ul Arduino al punții și placa STM32 simulată (`MockStm32.h`) |
 | `web/` | Aplicația web, fișiere statice fără pas de build |
 | `supabase/` | Migrările SQL și funcția Edge `hydrogpt` |
@@ -96,7 +96,6 @@ Toate rulează pe PC, fără hardware. Comenzile se dau din `tests/`:
 | `test_link.mjs` | `LinkMonitor` (heartbeat și reconectare) | `node test_link.mjs` |
 | `test_agent.mjs` | agentul HydroGPT și abonamentele (`web/agent.js`) | `node test_agent.mjs` |
 | `test_insights.mjs` | analiza obiceiurilor și identitatea copiei din funcția Supabase | `node test_insights.mjs` |
-| `test_template_sync.mjs` | modulele copiate în `stm32-template/` sunt identice cu cele din `stm32/Core` | `node test_template_sync.mjs` |
 
 Detaliile fiecărui test sunt în documentul zonei respective.
 
