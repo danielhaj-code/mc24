@@ -431,11 +431,17 @@ function minutesSinceDrink(now = Date.now()) {
   return Math.max(0, Math.floor((now - state.lastDrinkTs) / 60000));
 }
 
-// Volumul curent: doar la schimbare și cel mult o dată pe secundă.
+// Volumul curent, exact cum îl arată aplicația (rotunjit după abonament), ca LCD-ul să nu difere.
+// La schimbare cel mult o dată pe secundă; aceeași valoare se repetă la 5 s, altfel o linie pierdută
+// sau un reset al STM32 lasă LCD-ul fără mL (sau cu unul vechi) până se schimbă nivelul.
+const VOLUME_REFRESH_MS = 5000;
 function pushVolume(ml, now = Date.now()) {
-  if (!state.connected || ml === lcd.lastMl || now - lcd.lastMlAt < 1000) return;
-  lcd.lastMl = ml; lcd.lastMlAt = now;
-  sendToDevice(volumeLine(ml, cfg.capacity));
+  if (!state.connected) return;
+  const shown = displayMl(ml, cfg.tier);
+  const since = now - lcd.lastMlAt;
+  if (since < 1000 || (shown === lcd.lastMl && since < VOLUME_REFRESH_MS)) return;
+  lcd.lastMl = shown; lcd.lastMlAt = now;
+  sendToDevice(volumeLine(shown, cfg.capacity));
 }
 
 // „T” + „U”, apoi „W,6” dacă s-a schimbat totalul de azi; cu week = true, toate cele 7 zile.
