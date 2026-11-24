@@ -479,6 +479,10 @@ Conține doar `SmartBottle.uvprojx`/`.uvoptx` și un `startup_stm32f429xx.s` în
 
 `.project` leagă cu `PARENT-1-PROJECT_LOC/stm32/...` folderul `Core`, `startup_stm32f429xx.s`, `STM32F429ZITX_FLASH.ld` și fișierele individuale din `Drivers/`; nu conține cod propriu. `.cproject` are trei configurații (toate de tip debug, optimizare `-Os`), diferite doar prin definiri. Proiectul se importă fără „Copy projects into workspace”, altfel legăturile relative se rup.
 
+### 6.4.1 Șablonul de laborator (`stm32-template/`)
+
+Varianta pentru șablonul *Template_MC2025 / Template_GPIO*: proiect CubeMX (`Template_GPIO.ioc`) + Keil cu Arm Compiler 6.22, de sine stătător (drivere incluse). `main.c`, `stm32f4xx_it.c`, `stm32f4xx_hal_msp.c` și `main.h` sunt în formatul generat de CubeMX, cu aceeași configurație ca `stm32/Core/Src/main.c` (HSE → 180 MHz, ADC1 pe PA5, UART5, USART1 la 115200, PE2–PE4) și cu `app_init()`/`app_loop()` în secțiunile `USER CODE`. Modulele aplicației sunt copii ale celor din `stm32/Core`; se actualizează cu `stm32-template/sync-core.sh`, iar `tests/test_template_sync.mjs` pică dacă diferă. Modulele HAL cerute doar de BSP (LTDC, DMA2D, SDRAM, SPI, I2C) sunt activate din definițiile proiectului Keil, nu din `stm32f4xx_hal_conf.h`, pe care CubeMX îl regenerează. Detalii în [`../stm32-template/README.md`](../stm32-template/README.md).
+
 ### 6.5 Memorie
 
 Din `stm32/build/smart-bottle.map` (build `make`, varianta implicită, existent în repo la data scrierii):
