@@ -34,7 +34,7 @@ Exemplu: `L,2310,64,1`
 | `C,<raw_gol>,<raw_plin>` | Setează calibrarea folosită pentru procent și LCD |
 | `R` | Cere o citire imediată |
 | `P` | Ping (heartbeat). Răspunde ESP32, nu ajunge la STM32 |
-| `M,<ml>,<capacitate_ml>` | Volumul afișat în aplicație (rotunjit ca acolo; doar din citiri stabile, calibrate); la schimbare max. 1/s, repetat la 5 s |
+| `M,<ml>,<capacitate_ml>` | Volumul afișat în aplicație (rotunjit ca acolo; din fiecare citire calibrată, cu sticla prezentă); la schimbare max. 2/s, repetat la 5 s |
 | `T,<total_ml>,<obiectiv_ml>,<nr>` | Statisticile zilei: total băut, obiectiv, număr de înghițituri |
 | `U,<minute>` | Minute de la ultima înghițitură, `-1` = niciuna azi; cu `T` și la 60 s |
 | `W,<i>,<ml>` | Totalul zilei `i` (0 = acum 6 zile, 6 = azi); toate 7 la conectare, apoi doar `W,6` |

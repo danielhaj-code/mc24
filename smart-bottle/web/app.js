@@ -344,6 +344,9 @@ function onLine(line) {
   while (state.recent.length && state.recent[0].ts < now - CHART_WINDOW_MS) state.recent.shift();
   if (now - (state.chartAt ?? 0) >= 1000) { state.chartAt = now; renderDayChart(); }
 
+  // LCD-ul arată același mL ca aplicația la fiecare citire, nu doar la cele stabile: altfel cât timp
+  // nivelul se mișcă sticla de pe LCD (din citirea locală) se schimbă, iar numărul rămâne înghețat.
+  if (cfg.calibrated && !state.absent) pushVolume(state.ml, now);
   if (!msg.stable || state.absent) return;
 
   // log: doar citiri stabile, la schimbare de >= 5 mL sau o dată pe minut
@@ -357,7 +360,6 @@ function onLine(line) {
   }
 
   if (!cfg.calibrated) return;   // fără calibrare, mL nu înseamnă nimic
-  pushVolume(state.ml, now);
   const ev = detector.feed(state.ml, now);
   if (ev) {
     db.add('events', ev);
@@ -432,14 +434,14 @@ function minutesSinceDrink(now = Date.now()) {
 }
 
 // Volumul curent, exact cum îl arată aplicația (rotunjit după abonament), ca LCD-ul să nu difere.
-// La schimbare cel mult o dată pe secundă; aceeași valoare se repetă la 5 s, altfel o linie pierdută
+// La schimbare cel mult de 2 ori pe secundă (citirile vin la ~1 s, cu jitter); aceeași valoare se repetă la 5 s, altfel o linie pierdută
 // sau un reset al STM32 lasă LCD-ul fără mL (sau cu unul vechi) până se schimbă nivelul.
 const VOLUME_REFRESH_MS = 5000;
 function pushVolume(ml, now = Date.now()) {
   if (!state.connected) return;
   const shown = displayMl(ml, cfg.tier);
   const since = now - lcd.lastMlAt;
-  if (since < 1000 || (shown === lcd.lastMl && since < VOLUME_REFRESH_MS)) return;
+  if (since < 500 || (shown === lcd.lastMl && since < VOLUME_REFRESH_MS)) return;
   lcd.lastMl = shown; lcd.lastMlAt = now;
   sendToDevice(volumeLine(shown, cfg.capacity));
 }
