@@ -20,4 +20,6 @@ smart-bottle/stm32/build/
 smart-bottle/stm32/MDK-ARM/out/
 smart-bottle/stm32/MDK-ARM/RTE/
 *.uvguix.*
+# STM32CubeIDE: câte un director de build pentru fiecare configurație
+smart-bottle/stm32-cubeide/SmartBottle*/
 *.d

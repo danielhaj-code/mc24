@@ -34,7 +34,7 @@ Protocolul comun e descris în [PROTOCOL.md](PROTOCOL.md), iar lista de componen
 | *(varianta HX711)* STM32 PE2 / PE3 | HX711 DT / SCK | VCC 3.3 V; RATE la VCC pentru 80 SPS |
 
 Pinii sunt aleși dintre cei nefolosiți de LCD, SDRAM și giroscop. **Verifică-i în UM1670 înainte de cablare.**
-Dacă schimbi un pin, schimbă-l în `app_config.h` și în CubeMX.
+Dacă schimbi un pin: GPIO-urile senzorului sunt în `app_config.h` și în `MX_GPIO_Init` din `main.c`, ADC-ul și UART-urile în `stm32f4xx_hal_msp.c`.
 
 ## Firmware STM32 din linia de comandă (recomandat)
 
@@ -82,36 +82,30 @@ armasm, cu stiva de 4 KB ca în scriptul de link GCC; `Core/Src/syscalls.c` e do
 
 Pe LCD versiunea firmware-ului apare `dev`: `FW_VERSION` (hash-ul git) îl pune doar `make`.
 
-## Firmware STM32 (STM32CubeIDE, alternativ)
+## Firmware STM32 din STM32CubeIDE
 
-Dacă preferi CubeIDE: copiază în proiect doar modulele aplicației (`app`, `display`, `filter`, `link`,
-`protocol`, `sensor` și `app_config.h`); `main.c`, `stm32f4xx_it.c`, `stm32f4xx_hal_msp.c` și
-`system_stm32f4xx.c` le generează CubeMX. Din `main.h` ai nevoie de `LINK_HUART`, `LINK_INSTANCE`
-și `dbg_log` (sau definește-le în `main.h`-ul generat).
+`stm32-cubeide/` e un proiect CubeIDE gata de import (`SmartBottle`). Nu conține cod: toate sursele
+sunt legate din `stm32/` (`Core/`, `Drivers/`, `startup_stm32f429xx.s`, `STM32F429ZITX_FLASH.ld`), deci
+e același firmware ca la `make` și Keil, iar ce modifici în CubeIDE ajunge și acolo.
 
+1. **Driverele ST**, o singură dată: `cd stm32 && python tools/fetch_deps.py`.
+2. **File → Import → General → Existing Projects into Workspace**, *Select root directory* =
+   `smart-bottle/stm32-cubeide`. **Nu bifa „Copy projects into workspace”**: legăturile sunt relative
+   la locul proiectului din repo și s-ar rupe.
+3. Alege configurația (ciocanul ▾ sau *Project → Build Configurations → Set Active*):
 
-1. **Proiect nou** pentru placa *STM32F429I-DISC1*. La întrebarea „Initialize all peripherals with their default mode?” răspunde **Nu**, ca să nu se genereze cod care intră în conflict cu BSP-ul.
-2. **Configurare în CubeMX:**
-   - **RCC/Clock:** HSE 8 MHz, SYSCLK 168 sau 180 MHz. Întârzierile HX711 se adaptează singure prin `SystemCoreClock`.
-   - **ADC1:** canal IN5 (PA5), rezoluție 12 biți, conversie simplă, fără DMA. Sampling time 84 cicluri sau mai mult (senzorul are impedanță mare).
-   - **UART5:** asincron, 115200 8N1, cu **UART5 global interrupt** activat (NVIC).
-   - **GPIO:** PE4 output push-pull, nivel inițial Low. Pentru HX711: PE3 output Low și PE2 input pull-up.
-3. **Adaugă BSP-ul** din pachetul STM32CubeF4:
-   - Fișiere: `Drivers/BSP/STM32F429I-Discovery/` (`stm32f429i_discovery.c`, `_lcd.c`, `_sdram.c`), `Drivers/BSP/Components/ili9341/` și `Utilities/Fonts/`.
-   - Adaugă căile în *Include paths*.
-   - În `stm32f4xx_hal_conf.h` activează `HAL_LTDC_MODULE_ENABLED`, `HAL_DMA2D_MODULE_ENABLED`, `HAL_SDRAM_MODULE_ENABLED`, `HAL_SPI_MODULE_ENABLED` și `HAL_I2C_MODULE_ENABLED`.
-4. **Copiază** modulele aplicației (vezi mai sus), nu și fișierele de pornire generate de CubeMX.
-5. **În `main.c`:**
-   ```c
-   /* USER CODE BEGIN Includes */
-   #include "app.h"
-   /* USER CODE BEGIN 2 */
-   app_init();
-   /* în while (1), USER CODE BEGIN 3 */
-   app_loop();
-   ```
-   Callback-urile `HAL_UART_RxCpltCallback` și `HAL_UART_ErrorCallback` sunt deja în `link.c`. Nu le defini și în altă parte.
-6. **Varianta cu celulă de sarcină:** pune `#define SENSOR_USE_HX711 1` în `app_config.h`.
+   | Configurație | Echivalent `make` |
+   |---|---|
+   | `SmartBottle` | `make` (senzor analogic, legătură UART5 spre ESP32) |
+   | `SmartBottle_VCP` | `make LINK=vcp` (protocolul pe portul serial USB, pentru `tools/vcp_test.py`) |
+   | `SmartBottle_HX711` | `make SENSOR=hx711` (celulă de sarcină) |
+
+   Toate compilează cu `-Os -g3`, ca `make`: cu `-O0` desenul pe LCD încetinește bucla principală.
+4. **Build** (ciocanul), apoi **Run → Run As → STM32 C/C++ Application → OK**: scrie prin ST-LINK-ul
+   de pe placă și pornește programul. Pentru pas cu pas: *Debug As* în loc de *Run As*.
+
+Ca la Keil, pe LCD versiunea apare `dev`. Nu e proiect CubeMX (nu are `.ioc`): pinii și perifericele
+se configurează în `main.c`, `stm32f4xx_hal_msp.c` și `app_config.h`.
 
 **LED-uri:** LD3 (verde) e aprins când telefonul e conectat, iar LD4 (roșu) clipește la eroare de senzor.
 
