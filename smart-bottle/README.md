@@ -59,17 +59,17 @@ de Claude Code.
 
 ## Firmware STM32 din Keil µVision
 
-`stm32/MDK-ARM/SmartBottle.uvprojx` folosește aceleași surse ca `make` (Arm Compiler 6, MicroLIB,
-ST-LINK-ul de pe placă). Fișierul de pornire `MDK-ARM/startup_stm32f429xx.s` e varianta ST în sintaxă
-armasm, cu stiva de 4 KB ca în scriptul de link GCC; `Core/Src/syscalls.c` e doar pentru newlib (GCC)
-și nu face parte din proiect.
+`stm32-keil/` e proiectul Keil, separat de codul din `stm32/` (Arm Compiler 6, MicroLIB, ST-LINK-ul de
+pe placă). Conține doar `SmartBottle.uvprojx`/`.uvoptx` și fișierul de pornire `startup_stm32f429xx.s`
+(varianta ST în sintaxă armasm, cu stiva de 4 KB ca în scriptul de link GCC); sursele le ia din
+`../stm32/`, aceleași ca `make`. `stm32/Core/Src/syscalls.c` e doar pentru newlib (GCC) și nu face parte din proiect.
 
 1. **Keil MDK** cu licență fără limită de cod: MDK-Community (gratuită, uz necomercial) sau Pro.
    MDK-Lite nu ajunge: imaginea are ~65 KB, iar Lite se oprește la 32 KB (eroarea L6050U la link).
 2. **Pack Installer:** instalează `Keil::STM32F4xx_DFP` (proiectul e salvat cu 3.1.1; altă versiune
    instalată merge, µVision doar avertizează).
-3. **Driverele ST**, o singură dată: `cd stm32 && python tools/fetch_deps.py` (proiectul le ia din `Drivers/`).
-4. Deschide `stm32/MDK-ARM/SmartBottle.uvprojx` și alege ținta:
+3. **Driverele ST**, o singură dată: `cd stm32 && python tools/fetch_deps.py` (proiectul le ia din `stm32/Drivers/`).
+4. Deschide `stm32-keil/SmartBottle.uvprojx` și alege ținta:
 
    | Țintă | Echivalent `make` |
    |---|---|
@@ -77,7 +77,7 @@ armasm, cu stiva de 4 KB ca în scriptul de link GCC; `Core/Src/syscalls.c` e do
    | `SmartBottle_VCP` | `make LINK=vcp` (protocolul pe portul serial USB, pentru `tools/vcp_test.py`) |
    | `SmartBottle_HX711` | `make SENSOR=hx711` (celulă de sarcină) |
 
-5. **F7** compilează (`MDK-ARM/out/<țintă>/smart-bottle.axf` și `.hex`), **F8** scrie pe placă prin
+5. **F7** compilează (`stm32-keil/out/<țintă>/smart-bottle.axf` și `.hex`), **F8** scrie pe placă prin
    ST-LINK (ștergere, scriere, verificare, apoi pornește programul).
 
 Pe LCD versiunea firmware-ului apare `dev`: `FW_VERSION` (hash-ul git) îl pune doar `make`.
